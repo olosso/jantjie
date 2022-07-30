@@ -1,2 +1,3 @@
-# parser
-A parser written in Rust
+# intrepreter
+
+Writing an intrepreter following this book by Thorsten Ball: https://interpreterbook.com/
