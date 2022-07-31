@@ -52,25 +52,24 @@ impl TokenType {
         String::from(s)
     }
 
-    fn from(s: &str) -> Self {
-        match s {
-            "=" => TokenType::Assign,
-            "+" => TokenType::Plus,
+    pub fn from(c: char) -> Self {
+        match c {
+            '=' => TokenType::Assign,
+            '+' => TokenType::Plus,
 
-            "," => TokenType::Comma,
-            ";" => TokenType::Semicolon,
+            ',' => TokenType::Comma,
+            ';' => TokenType::Semicolon,
 
-            "(" => TokenType::Lparen,
-            ")" => TokenType::Rparen,
-            "{" => TokenType::Lbrace,
-            "}" => TokenType::Rbrace,
+            '(' => TokenType::Lparen,
+            ')' => TokenType::Rparen,
+            '{' => TokenType::Lbrace,
+            '}' => TokenType::Rbrace,
 
-            "fn" => TokenType::Function,
-            "let" => TokenType::Let,
+            //'fn' => TokenType::Function,
+            //'let' => TokenType::Let,
 
-            "INT" => TokenType::Int(s.parse().unwrap()),
-            "IDENT" => TokenType::Ident(String::from(s)),
-
+            //"INT" => TokenType::Int(s.parse().unwrap()),
+            //"IDENT" => TokenType::Ident(String::from(s)),
             _ => TokenType::Illegal,
         }
     }
