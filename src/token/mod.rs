@@ -1,3 +1,4 @@
+#[derive(Debug, PartialEq)]
 pub enum TokenType {
     Illegal,
     EOF,
@@ -25,7 +26,7 @@ pub enum TokenType {
 }
 
 impl TokenType {
-    fn string(&self) -> String {
+    pub fn string(&self) -> String {
         let s = match self {
             TokenType::Illegal => "ILLEGAL",
             TokenType::EOF => "EOF",
