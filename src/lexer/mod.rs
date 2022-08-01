@@ -1,4 +1,4 @@
-use crate::token::TokenType;
+use crate::token::*;
 
 struct Lexer {
     input: String,
@@ -34,18 +34,18 @@ impl Lexer {
     }
 
     /// Get next token and moves the lexer forward one step.
-    pub fn next_token(&mut self) -> TokenType {
+    pub fn next_token(&mut self) -> Token {
         let token = match self.ch {
-            '=' => TokenType::Assign,
-            ';' => TokenType::Semicolon,
-            '(' => TokenType::Lparen,
-            ')' => TokenType::Rparen,
-            '{' => TokenType::Lbrace,
-            '}' => TokenType::Rbrace,
-            ',' => TokenType::Comma,
-            '+' => TokenType::Plus,
-            '\0' => TokenType::EOF,
-            _ => TokenType::Illegal,
+            '=' => Token::new(TokenType::Assign, self.ch.to_string()),
+            ';' => Token::new(TokenType::Semicolon, self.ch.to_string()),
+            '(' => Token::new(TokenType::Lparen, self.ch.to_string()),
+            ')' => Token::new(TokenType::Rparen, self.ch.to_string()),
+            '{' => Token::new(TokenType::Lbrace, self.ch.to_string()),
+            '}' => Token::new(TokenType::Rbrace, self.ch.to_string()),
+            ',' => Token::new(TokenType::Comma, self.ch.to_string()),
+            '+' => Token::new(TokenType::Plus, self.ch.to_string()),
+            '\0' => Token::new(TokenType::EOF, "EOF".to_string()),
+            _ => Token::new(TokenType::Assign, "ILLEGAL".to_string()),
         };
 
         self.read_char();
@@ -77,16 +77,16 @@ mod token_tests {
 
         for (ex_token, ex_literal) in expected.into_iter().zip(input.chars()) {
             assert_eq!(
-                ex_token, token,
+                ex_token, token.token_type,
                 "Expected TokenType::{:?}, but got TokenType::{:?}",
-                ex_token, token
+                ex_token, token.token_type
             );
             assert_eq!(
                 ex_literal.to_string(),
-                token.string(),
+                token.literal,
                 "Expected literal {:?}, but got literal {:?}",
                 ex_token,
-                token
+                token.literal
             );
             token = l.next_token();
         }
