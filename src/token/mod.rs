@@ -4,8 +4,8 @@ pub enum TokenType {
     EOF,
 
     // Identifiers + literals
-    Ident(String),
-    Int(i64),
+    Ident,
+    Int,
 
     // Operators
     Assign,
@@ -31,8 +31,8 @@ impl TokenType {
             TokenType::Illegal => "ILLEGAL",
             TokenType::EOF => "EOF",
 
-            TokenType::Ident(_) => "IDENT",
-            TokenType::Int(_) => "INT",
+            TokenType::Ident => "IDENT",
+            TokenType::Int => "INT",
 
             TokenType::Assign => "=",
             TokenType::Plus => "+",
@@ -71,6 +71,20 @@ impl TokenType {
             //"INT" => TokenType::Int(s.parse().unwrap()),
             //"IDENT" => TokenType::Ident(String::from(s)),
             _ => TokenType::Illegal,
+        }
+    }
+}
+
+pub struct Token {
+    pub token_type: TokenType,
+    pub literal: String,
+}
+
+impl Token {
+    pub fn new(token_type: TokenType, literal: String) -> Self {
+        Token {
+            token_type,
+            literal: literal.to_string(),
         }
     }
 }
