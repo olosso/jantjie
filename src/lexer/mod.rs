@@ -91,4 +91,174 @@ mod token_tests {
             token = l.next_token();
         }
     }
+
+    #[test]
+    fn test_next_token2() {
+        let input = "let five = 5
+let ten = 10
+
+let add = fn(x, y) {
+    x + y;
+}
+
+let result = add(five, ten);";
+
+        let expected = vec![
+            Token {
+                token_type: TokenType::Let,
+                literal: "let".to_string(),
+            },
+            Token {
+                token_type: TokenType::Ident,
+                literal: "five".to_string(),
+            },
+            Token {
+                token_type: TokenType::Assign,
+                literal: "=".to_string(),
+            },
+            Token {
+                token_type: TokenType::Int,
+                literal: "5".to_string(),
+            },
+            Token {
+                token_type: TokenType::Semicolon,
+                literal: ";".to_string(),
+            },
+            Token {
+                token_type: TokenType::Let,
+                literal: "let".to_string(),
+            },
+            Token {
+                token_type: TokenType::Ident,
+                literal: "ten".to_string(),
+            },
+            Token {
+                token_type: TokenType::Assign,
+                literal: "=".to_string(),
+            },
+            Token {
+                token_type: TokenType::Int,
+                literal: "10".to_string(),
+            },
+            Token {
+                token_type: TokenType::Semicolon,
+                literal: ";".to_string(),
+            },
+            Token {
+                token_type: TokenType::Let,
+                literal: "let".to_string(),
+            },
+            Token {
+                token_type: TokenType::Ident,
+                literal: "add".to_string(),
+            },
+            Token {
+                token_type: TokenType::Assign,
+                literal: "=".to_string(),
+            },
+            Token {
+                token_type: TokenType::Function,
+                literal: "fn".to_string(),
+            },
+            Token {
+                token_type: TokenType::Lparen,
+                literal: "(".to_string(),
+            },
+            Token {
+                token_type: TokenType::Ident,
+                literal: "x".to_string(),
+            },
+            Token {
+                token_type: TokenType::Comma,
+                literal: ",".to_string(),
+            },
+            Token {
+                token_type: TokenType::Ident,
+                literal: "y".to_string(),
+            },
+            Token {
+                token_type: TokenType::Rparen,
+                literal: ")".to_string(),
+            },
+            Token {
+                token_type: TokenType::Lbrace,
+                literal: "{".to_string(),
+            },
+            Token {
+                token_type: TokenType::Ident,
+                literal: "x".to_string(),
+            },
+            Token {
+                token_type: TokenType::Plus,
+                literal: "+".to_string(),
+            },
+            Token {
+                token_type: TokenType::Ident,
+                literal: "y".to_string(),
+            },
+            Token {
+                token_type: TokenType::Semicolon,
+                literal: ";".to_string(),
+            },
+            Token {
+                token_type: TokenType::Lbrace,
+                literal: "}".to_string(),
+            },
+            Token {
+                token_type: TokenType::Let,
+                literal: "let".to_string(),
+            },
+            Token {
+                token_type: TokenType::Ident,
+                literal: "result".to_string(),
+            },
+            Token {
+                token_type: TokenType::Assign,
+                literal: "=".to_string(),
+            },
+            Token {
+                token_type: TokenType::Ident,
+                literal: "add".to_string(),
+            },
+            Token {
+                token_type: TokenType::Lparen,
+                literal: "(".to_string(),
+            },
+            Token {
+                token_type: TokenType::Ident,
+                literal: "five".to_string(),
+            },
+            Token {
+                token_type: TokenType::Comma,
+                literal: ",".to_string(),
+            },
+            Token {
+                token_type: TokenType::Ident,
+                literal: "ten".to_string(),
+            },
+            Token {
+                token_type: TokenType::Rparen,
+                literal: ")".to_string(),
+            },
+        ];
+
+        let mut l = Lexer::new(String::from(input));
+        let mut token = l.next_token();
+
+        for (ex_token, ex_literal) in expected.into_iter().zip(input.chars()) {
+            assert_eq!(
+                ex_token, token.token_type,
+                "Expected TokenType::{:?}, but got TokenType::{:?}",
+                ex_token, token.token_type
+            );
+            assert_eq!(
+                ex_literal.to_string(),
+                token.literal,
+                "Expected literal {:?}, but got literal {:?}",
+                ex_token,
+                token.literal
+            );
+            token = l.next_token();
+        }
+    }
 }
