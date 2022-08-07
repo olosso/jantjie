@@ -84,7 +84,7 @@ impl Token {
     pub fn new(token_type: TokenType, literal: String) -> Self {
         Token {
             token_type,
-            literal: literal.to_string(),
+            literal,
         }
     }
 }
