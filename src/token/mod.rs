@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum TokenType {
     Illegal,
     EOF,
@@ -10,6 +10,16 @@ pub enum TokenType {
     // Operators
     Assign,
     Plus,
+    Minus,
+    Multiplication,
+    Division,
+    Not,
+    Equal,
+    NotEqual,
+    GT,
+    LT,
+    GTOE,
+    LTOE,
 
     // Delimiters
     Comma,
@@ -23,6 +33,13 @@ pub enum TokenType {
     // Keywords
     Function,
     Let,
+
+    If,
+    Else,
+    Return,
+
+    True,
+    False,
 }
 
 impl TokenType {
@@ -36,6 +53,16 @@ impl TokenType {
 
             TokenType::Assign => "=",
             TokenType::Plus => "+",
+            TokenType::Minus => "-",
+            TokenType::Multiplication => "*",
+            TokenType::Division => "/",
+            TokenType::Not => "!",
+            TokenType::Equal => "==",
+            TokenType::NotEqual => "!=",
+            TokenType::GT => ">",
+            TokenType::LT => "<",
+            TokenType::GTOE => ">=",
+            TokenType::LTOE => "<=",
 
             TokenType::Comma => ",",
             TokenType::Semicolon => ";",
@@ -47,34 +74,48 @@ impl TokenType {
 
             TokenType::Function => "FUNCTION",
             TokenType::Let => "LET",
+
+            TokenType::If => "IF",
+            TokenType::Else => "ELSE",
+            TokenType::Return => "RETURN",
+
+            TokenType::True => "TRUE",
+            TokenType::False => "FALSE",
         };
 
         String::from(s)
     }
 
-    pub fn from(c: char) -> Self {
-        match c {
-            '=' => TokenType::Assign,
-            '+' => TokenType::Plus,
+    //pub fn from(c: char) -> Self {
+    //    match c {
+    //        '=' => TokenType::Assign,
+    //        '+' => TokenType::Plus,
 
-            ',' => TokenType::Comma,
-            ';' => TokenType::Semicolon,
+    //        ',' => TokenType::Comma,
+    //        ';' => TokenType::Semicolon,
 
-            '(' => TokenType::Lparen,
-            ')' => TokenType::Rparen,
-            '{' => TokenType::Lbrace,
-            '}' => TokenType::Rbrace,
+    //        '(' => TokenType::Lparen,
+    //        ')' => TokenType::Rparen,
+    //        '{' => TokenType::Lbrace,
+    //        '}' => TokenType::Rbrace,
 
-            //'fn' => TokenType::Function,
-            //'let' => TokenType::Let,
+    //        //'fn' => TokenType::Function,
+    //        //'let' => TokenType::Let,
 
-            //"INT" => TokenType::Int(s.parse().unwrap()),
-            //"IDENT" => TokenType::Ident(String::from(s)),
-            _ => TokenType::Illegal,
-        }
+    //        //"INT" => TokenType::Int(s.parse().unwrap()),
+    //        //"IDENT" => TokenType::Ident(String::from(s)),
+    //        _ => TokenType::Illegal,
+    //    }
+    //}
+
+    pub fn keywords() -> Vec<String> {
+        let keywords = ["let", "func", "if", "else", "return", "true", "false"];
+
+        keywords.map(|x| x.to_string()).to_vec()
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub struct Token {
     pub token_type: TokenType,
     pub literal: String,
@@ -82,6 +123,24 @@ pub struct Token {
 
 impl Token {
     pub fn new(token_type: TokenType, literal: String) -> Self {
+        Token {
+            token_type,
+            literal,
+        }
+    }
+
+    pub fn from_keyword(literal: String) -> Self {
+        let token_type = match literal.as_str() {
+            "let" => TokenType::Let,
+            "func" => TokenType::Function,
+            "if" => TokenType::If,
+            "else" => TokenType::Else,
+            "return" => TokenType::Return,
+            "true" => TokenType::True,
+            "false" => TokenType::False,
+            _ => TokenType::Illegal,
+        };
+
         Token {
             token_type,
             literal,
