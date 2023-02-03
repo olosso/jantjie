@@ -9,6 +9,7 @@ pub trait Node {
 
 /// Expression
 /// REVIEW Maybe this should be a struct?
+#[derive(Debug, Clone)]
 pub enum Expression {
     Placeholder,
 }
@@ -26,9 +27,9 @@ impl Node for Expression {
 }
 
 /// Statement
+#[derive(Debug, Clone)]
 pub enum Statement {
-    Let(String, Expression),
-    If(Expression),
+    Let(Token, Option<Expression>), // Token is for the identifier, expression is for the value
     Return(Option<Expression>),
 }
 
@@ -40,18 +41,17 @@ impl Statement {
 
 impl Node for Statement {
     fn token_literal(&self) -> String {
-        let literal = match self {
-            Statement::Let(s, x) => "LetStatement",
-            _ => "Not yet implemented",
-        };
-
-        String::from(literal)
+        match self {
+            Statement::Let(t, e) => t.literal.clone(),
+            _ => String::from("Not yet implemented"),
+        }
     }
 }
 
 /// Program
 /// REVIEW Currently Program is a Vec of Statements that are also Nodes, but it also itself is a Node.
 /// I'm not sure what the consequences of this is.
+#[derive(Debug)]
 pub struct Program {
     pub statements: Vec<Statement>,
 }
@@ -67,11 +67,10 @@ impl Node for Program {
 }
 
 /// Identifier
-#[derive(Debug)]
-pub struct Identifier {
-    pub token: Token,
-    //value: String,
-}
+//pub struct Identifier {
+//    pub token: Token,
+//    //value: String,
+//}
 
 #[cfg(test)]
 mod ast_tests {
@@ -80,7 +79,13 @@ mod ast_tests {
 
     #[test]
     fn test_ast() {
-        let statement = Statement::Let(String::from(""), Expression::Placeholder);
+        let statement = Statement::Let(
+            Token {
+                token_type: TokenType::Ident,
+                literal: String::from("x"),
+            },
+            None,
+        );
 
         assert!(matches!(statement, Statement::Let(_, _)));
     }
