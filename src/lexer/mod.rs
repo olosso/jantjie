@@ -1,5 +1,6 @@
 use crate::token::*;
 
+#[derive(Debug)]
 pub struct Lexer {
     input: String,
     position: usize,
@@ -120,11 +121,9 @@ impl Lexer {
             // Resolving whether token is Assign or Equal
             '=' => {
                 // FIXME This is a bit hacky just to pass all the tests.
-                println!("{:?}", self.peek());
                 match self.peek() {
                     Some(x) => match x {
                         '=' => {
-                            println!("{:?}", x);
                             self.read_char();
                             self.read_char();
                             return Token::new(TokenType::Equal, "==".to_string());
