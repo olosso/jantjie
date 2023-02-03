@@ -113,6 +113,10 @@ impl TokenType {
 
         keywords.map(|x| x.to_string()).to_vec()
     }
+
+    pub fn is_statement(&self) -> bool {
+        matches!(&self, TokenType::Let | TokenType::Return)
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
