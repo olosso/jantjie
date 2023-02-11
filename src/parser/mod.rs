@@ -3,12 +3,27 @@ mod tests;
 use crate::ast::*;
 use crate::lexer::*;
 use crate::token::*;
+use std::collections::HashMap;
+
+#[derive(PartialEq, PartialOrd)]
+enum Precedence {
+    EMPTY, // Empty identifier _
+    LOWEST,
+    EQUALS,      // ==
+    LESSGREATER, // > or <
+    SUM,         // +
+    PRODUCT,     // *
+    PREFIX,      // -X or !X
+    CALL,        // foo(X)
+}
 
 #[derive(Debug)]
 struct Parser {
     lexer: Lexer,
     current_token: Option<Token>,
     peek_token: Option<Token>,
+    prefix_parse_fns: HashMap<TokenType, fn() -> Option<Expression>>,
+    infix_parse_fns: HashMap<TokenType, fn(Expression) -> Option<Expression>>,
 }
 
 impl Parser {
@@ -19,6 +34,8 @@ impl Parser {
             lexer,
             current_token: None,
             peek_token: None,
+            prefix_parse_fns: Self::register_prefixes(),
+            infix_parse_fns: Self::register_infixes(),
         };
 
         parser.next_token();
@@ -49,9 +66,9 @@ impl Parser {
                     token_type: x,
                     literal: l,
                 }) => {
-                    if *x == TokenType::EOF {
+                    if x == &TokenType::EOF {
                         break;
-                    } else if x.is_statement() {
+                    } else if x != &TokenType::Semicolon {
                         program.statements.push(self.parse_statement());
                     }
                 }
@@ -77,7 +94,7 @@ impl Parser {
         match tt {
             TokenType::Let => self.parse_let_statement(),
             TokenType::Return => self.parse_return_statement(),
-            _ => panic!("Attempt to parse a non-statement token as a statement token: {tt:?}"),
+            _ => self.parse_expression_statement(),
         }
     }
 
@@ -115,6 +132,44 @@ impl Parser {
         statement
     }
 
+    fn parse_expression_statement(&mut self) -> Statement {
+        let mut statement = Statement::Expr(
+            self.current_token.as_ref().unwrap().clone(),
+            self.parse_expression(Precedence::LOWEST),
+        );
+
+        // TODO Ignoring expression for now
+        if self.peek_tokentype_is(TokenType::Semicolon) {
+            self.next_token();
+        }
+
+        statement
+    }
+
+    fn parse_expression(&mut self, p: Precedence) -> Option<Expression> {
+        let prefix = self
+            .prefix_parse_fns
+            .get(&self.current_token.as_ref().unwrap().token_type);
+
+        if let Some(f) = prefix {
+            Some(f().unwrap())
+        } else {
+            None
+        }
+    }
+
+    fn parse_prefix_ident() -> Option<Expression> {
+        Some(Expression::Placeholder)
+    }
+
+    fn parse_prefix_minus() -> Option<Expression> {
+        Some(Expression::Placeholder)
+    }
+
+    fn parse_infix_minus(left: Expression) -> Option<Expression> {
+        Some(Expression::Placeholder)
+    }
+
     fn cur_tokentype_is(&self, tt: TokenType) -> bool {
         self.current_token.as_ref().unwrap().token_type == tt
     }
@@ -130,5 +185,31 @@ impl Parser {
         } else {
             false
         }
+    }
+
+    fn register_prefixes() -> HashMap<TokenType, fn() -> Option<Expression>> {
+        let mut prefix_fns = HashMap::new();
+
+        prefix_fns.insert(
+            TokenType::Ident,
+            Self::parse_prefix_ident as fn() -> Option<Expression>,
+        );
+        prefix_fns.insert(
+            TokenType::Minus,
+            Self::parse_prefix_minus as fn() -> Option<Expression>, // NOTE This cast is redundant, since the compiler tries to cast this item the same way as the first item, but it is here for the sake of clarity.
+        );
+
+        prefix_fns
+    }
+
+    fn register_infixes() -> HashMap<TokenType, fn(Expression) -> Option<Expression>> {
+        let mut infix_fns = HashMap::new();
+
+        infix_fns.insert(
+            TokenType::Minus,
+            Self::parse_infix_minus as fn(Expression) -> Option<Expression>,
+        );
+
+        infix_fns
     }
 }
