@@ -31,11 +31,17 @@ impl Node for Expression {
 pub enum Statement {
     Let(Token, Option<Expression>), // Token is for the identifier, expression is for the value
     Return(Option<Expression>),
+    Expr(Token, Option<Expression>),
 }
 
 impl Statement {
-    fn statement_node(&self) {
-        println!("I'm a statement node!")
+    pub fn literal(&self) -> String {
+        match self {
+            Statement::Let(t, _) => t.literal.clone(),
+            Statement::Return(Some(s)) => s.token_literal(),
+            Statement::Return(None) => String::from("Empty return"),
+            Statement::Expr(t, _) => t.literal.clone(),
+        }
     }
 }
 
