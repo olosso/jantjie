@@ -2,14 +2,18 @@
 mod parser_tests {
     use crate::parser::*;
 
-    #[test]
-    fn test_parse_let_statement() {
-        let input = String::from("let x = 5;");
+    fn init(input: &str) -> Program {
+        let input = String::from(input);
 
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
 
-        let program: Program = parser.parse_program();
+        parser.parse_program()
+    }
+
+    #[test]
+    fn test_parse_let_statement() {
+        let program = init("let x = 5;");
 
         assert_eq!(
             program.statements.len(),
@@ -48,18 +52,13 @@ mod parser_tests {
 
     #[test]
     fn test_parse_let_statements() {
-        let input = String::from(
+        let program = init(
             "
 let x = 5;
 let y = 10;
 let foobar = 838383;
 ",
         );
-
-        let lexer = Lexer::new(input);
-        let mut parser = Parser::new(lexer);
-
-        let program: Program = parser.parse_program();
 
         assert_eq!(
             program.statements.len(),
@@ -70,8 +69,6 @@ let foobar = 838383;
 
         let expected_identifiers = vec!["x", "y", "foobar"];
 
-        dbg!(&program);
-
         for (actual, expected) in program.statements.iter().zip(expected_identifiers) {
             assert_eq!(actual.token_literal(), expected);
             assert!(matches!(actual, Statement::Let(_, _)))
@@ -80,31 +77,83 @@ let foobar = 838383;
 
     #[test]
     fn test_parse_return_statements() {
-        let input = String::from(
+        let program = init(
             "
 return 5;
 return 10;
+return;
 ",
         );
 
-        let lexer = Lexer::new(input);
-        let mut parser = Parser::new(lexer);
-
-        let program: Program = parser.parse_program();
-
+        dbg!(&program);
         assert_eq!(
             program.statements.len(),
-            2,
+            3,
             "Expected program to have 2 statements, but received {:?}",
             program.statements.len()
         );
 
-        let expected_identifiers = vec!["", ""];
-
-        dbg!(&program);
+        let expected_identifiers = vec!["", "", ""];
 
         for (actual, expected) in program.statements.iter().zip(expected_identifiers) {
             assert!(matches!(actual, Statement::Return(_)))
+        }
+    }
+
+    #[test]
+    fn test_precedence() {
+        assert!(Precedence::EMPTY <= Precedence::LOWEST);
+        assert!(Precedence::EMPTY < Precedence::LOWEST);
+        assert!(Precedence::PREFIX < Precedence::CALL);
+    }
+
+    #[test]
+    fn test_parse_identifier_expression() {
+        let program = init("foobar;");
+
+        assert_eq!(
+            program.statements.len(),
+            1,
+            "Expected program to have 1 statements, but received {:?}",
+            program.statements.len()
+        );
+
+        let expected_statements = vec![Statement::Expr(
+            Token {
+                token_type: TokenType::Ident,
+                literal: String::from("foobar"),
+            },
+            Some(Expression::Placeholder),
+        )];
+
+        for (actual, expected) in program.statements.iter().zip(expected_statements) {
+            assert!(matches!(actual, expected))
+        }
+    }
+
+    #[test]
+    fn test_parse_literal_integer_expression() {
+        let program = init("42;");
+
+        dbg!(&program);
+
+        assert_eq!(
+            program.statements.len(),
+            1,
+            "Expected program to have 1 statements, but received {:?}",
+            program.statements.len()
+        );
+
+        let expected_statements = vec![Statement::Expr(
+            Token {
+                token_type: TokenType::Ident,
+                literal: String::from("42"),
+            },
+            Some(Expression::Placeholder),
+        )];
+
+        for (actual, expected) in program.statements.iter().zip(expected_statements) {
+            assert_eq!(actual.literal(), expected.literal());
         }
     }
 }
