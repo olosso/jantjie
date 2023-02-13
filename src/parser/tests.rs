@@ -108,59 +108,97 @@ return;
     }
 
     #[test]
-    fn test_parse_identifier_expression() {
-        let program = init("foobar;");
-
-        assert_eq!(
-            program.statements.len(),
-            1,
-            "Expected program to have 1 statements, but received {:?}",
-            program.statements.len()
+    fn test_parse_single_expressions() {
+        case_parse_identifier_expression(
+            "foobar;",
+            Statement::Expr(
+                Token {
+                    token_type: TokenType::Ident,
+                    literal: String::from("foobar"),
+                },
+                Some(Expression::Placeholder),
+            ),
+            "Expected IdentifierToken. Got None.",
         );
 
-        let expected_statements = vec![Statement::Expr(
-            Token {
-                token_type: TokenType::Ident,
-                literal: String::from("foobar"),
-            },
-            Some(Expression::Placeholder),
-        )];
+        case_parse_prefix_int_expression(
+            "42;",
+            Statement::Expr(
+                Token {
+                    token_type: TokenType::Ident,
+                    literal: String::from("42"),
+                },
+                Some(Expression::IntegerLiteral(42)),
+            ),
+            "Expected Some(LiteralExpression). Got None.",
+        );
 
-        for (actual, expected) in program.statements.iter().zip(expected_statements) {
-            assert!(matches!(actual, expected))
+        case_parse_prefix_bang_expression(
+            "!foo;",
+            Statement::Expr(
+                Token {
+                    token_type: TokenType::Ident,
+                    literal: String::from("-foo"),
+                },
+                Some(Expression::IntegerLiteral(-42)),
+            ),
+            "Expected Some(LiteralExpression). Got None.",
+        )
+    }
+
+    fn parse_single_expression(source_code: &str, statement: &Statement) -> Statement {
+        let program = init(source_code);
+        let n_parsed_statements = program.statements.len();
+
+        assert_eq!(
+            n_parsed_statements, 1,
+            "Expected program to have a single statement, but received {}",
+            n_parsed_statements
+        );
+
+        let parsed = program.statements[0].clone();
+
+        assert_eq!(statement.literal(), parsed.literal());
+
+        parsed
+    }
+
+    fn case_parse_identifier_expression(source_code: &str, statement: Statement, error_msg: &str) {
+        let parsed = parse_single_expression(source_code, &statement);
+
+        assert!(matches!(parsed, statement))
+    }
+
+    fn case_parse_prefix_int_expression(source_code: &str, statement: Statement, error_msg: &str) {
+        let parsed = parse_single_expression(source_code, &statement);
+
+        let val = match statement.expr() {
+            Some(Expression::IntegerLiteral(x)) => x,
+            _ => panic!(),
+        };
+
+        match parsed.expr() {
+            Some(Expression::IntegerLiteral(i)) => {
+                assert_eq!(i, val);
+            }
+            _ => panic!("{}", error_msg),
         }
     }
 
-    #[test]
-    fn test_parse_literal_integer_expression() {
-        let program = init("42;");
+    fn case_parse_prefix_bang_expression(source_code: &str, statement: Statement, error_msg: &str) {
+        let parsed = parse_single_expression(source_code, &statement);
 
-        dbg!(&program);
+        // TODO
+        //let val = match statement.expr() {
+        //    Some(Expression::IntegerLiteral(x)) => x,
+        //    _ => panic!(),
+        //};
 
-        assert_eq!(
-            program.statements.len(),
-            1,
-            "Expected program to have 1 statements, but received {:?}",
-            program.statements.len()
-        );
-
-        let expected_statements = vec![Statement::Expr(
-            Token {
-                token_type: TokenType::Ident,
-                literal: String::from("42"),
-            },
-            Some(Expression::IntegerLiteral(42)),
-        )];
-
-        for (actual, expected) in program.statements.iter().zip(expected_statements) {
-            assert_eq!(actual.literal(), expected.literal());
-
-            match actual.expr() {
-                Some(Expression::IntegerLiteral(i)) => {
-                    assert_eq!(*i, 42);
-                }
-                _ => panic!("Expected Some(LiteralExpression). Got None."),
-            }
-        }
+        //match parsed.expr() {
+        //    Some(Expression::IntegerLiteral(i)) => {
+        //        assert_eq!(i, val);
+        //    }
+        //    _ => panic!("{}", error_msg),
+        //}
     }
 }

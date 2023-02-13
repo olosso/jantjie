@@ -148,7 +148,10 @@ impl Parser {
         if let Some(f) = prefix {
             Some(f(self).unwrap())
         } else {
-            todo!("Expression parsing not yet implemented for this expression type!")
+            todo!(
+                "Expression parsing not yet implemented for this expression type: {:?}",
+                &self.current_token.token_type
+            )
         }
     }
 
