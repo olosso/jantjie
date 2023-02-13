@@ -149,11 +149,18 @@ return;
                 token_type: TokenType::Ident,
                 literal: String::from("42"),
             },
-            Some(Expression::Placeholder),
+            Some(Expression::IntegerLiteral(42)),
         )];
 
         for (actual, expected) in program.statements.iter().zip(expected_statements) {
             assert_eq!(actual.literal(), expected.literal());
+
+            match actual.expr() {
+                Some(Expression::IntegerLiteral(i)) => {
+                    assert_eq!(*i, 42);
+                }
+                _ => panic!("Expected Some(LiteralExpression). Got None."),
+            }
         }
     }
 }

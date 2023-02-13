@@ -109,7 +109,6 @@ impl Parser {
             panic!("Identifier not followed by an assignment in let statement.")
         }
 
-        // TODO Ignoring expression for now
         while !self.peek_tokentype_is(TokenType::Semicolon) {
             self.next_token();
         }
@@ -120,7 +119,6 @@ impl Parser {
     fn parse_return_statement(&mut self) -> Statement {
         let statement = Statement::Return(Some(Expression::Placeholder));
 
-        // TODO Ignoring expression for now
         while !self.peek_tokentype_is(TokenType::Semicolon) {
             self.next_token();
         }
@@ -154,6 +152,13 @@ impl Parser {
         }
     }
 
+    ///
+    /// Parses the current token that has been identified as a Token::LiteralInteger.
+    ///
+    fn parse_literal_integer(&self) -> Option<Expression> {
+        match &self.current_token.literal.parse::<i32>() {
+            Ok(x) => Some(Expression::IntegerLiteral(*x)),
+            Err(err) => panic!("{}", err),
         }
     }
 
@@ -197,6 +202,7 @@ impl Parser {
             TokenType::Minus,
             Self::parse_prefix_minus, // NOTE This cast is redundant, since the compiler tries to cast this item the same way as the first item, but it is here for the sake of clarity.
         );
+        prefix_fns.insert(TokenType::Int, Self::parse_literal_integer);
 
         prefix_fns
     }

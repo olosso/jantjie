@@ -9,9 +9,10 @@ pub trait Node {
 
 /// Expression
 /// REVIEW Maybe this should be a struct?
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expression {
     Placeholder,
+    IntegerLiteral(i32),
 }
 
 impl Expression {
@@ -41,6 +42,14 @@ impl Statement {
             Statement::Return(Some(s)) => s.token_literal(),
             Statement::Return(None) => String::from("Empty return"),
             Statement::Expr(t, _) => t.literal.clone(),
+        }
+    }
+
+    pub fn expr(&self) -> &Option<Expression> {
+        match self {
+            Statement::Let(_, e) => e,
+            Statement::Return(e) => e,
+            Statement::Expr(_, e) => e,
         }
     }
 }
