@@ -17,12 +17,11 @@ enum Precedence {
     CALL,        // foo(X)
 }
 
-#[derive(Debug)]
 struct Parser {
     lexer: Lexer,
-    current_token: Option<Token>,
-    peek_token: Option<Token>,
-    prefix_parse_fns: HashMap<TokenType, fn() -> Option<Expression>>,
+    current_token: Token,
+    peek_token: Token,
+    prefix_parse_fns: HashMap<TokenType, for<'a> fn(&'a Self) -> Option<Expression>>,
     infix_parse_fns: HashMap<TokenType, fn(Expression) -> Option<Expression>>,
 }
 
@@ -30,16 +29,24 @@ impl Parser {
     /// Parser::new
     /// Create a new parser given a lexer.
     fn new(lexer: Lexer) -> Self {
+        // NOTE SOF of file tokens should be rewritten immediately. If not, something has gone wrong.
         let mut parser = Parser {
             lexer,
-            current_token: None,
-            peek_token: None,
+            current_token: Token {
+                token_type: TokenType::SOF,
+                literal: String::from("Start of file"),
+            },
+            peek_token: Token {
+                token_type: TokenType::SOF,
+                literal: String::from("Start of file"),
+            },
             prefix_parse_fns: Self::register_prefixes(),
             infix_parse_fns: Self::register_infixes(),
         };
 
         parser.next_token();
         parser.next_token();
+        // TODO Maybe check here that SOF tokens have been rewritten? They should be.
 
         parser
     }
@@ -48,7 +55,7 @@ impl Parser {
     /// Advance the lexer of the parser to receive a new token. Also updates the peek_token.
     fn next_token(&mut self) {
         self.current_token = self.peek_token.clone();
-        self.peek_token = Some(self.lexer.next_token());
+        self.peek_token = self.lexer.next_token();
     }
 
     /// Parser::parse_program
@@ -56,25 +63,16 @@ impl Parser {
     fn parse_program(&mut self) -> Program {
         let mut program = Program { statements: vec![] };
 
-        /// REVIEW It's kinda intense!
-        /// Gets a new token given by the lexer, and tries to parse a statement based on the token.
-        /// Pushes each statement to the program.
+        /*
+         * Loops over the Token produced by the Lexer.
+         * Forwards the execution to a parser function if it finds something interesting.
+         * Ends execution when EOF Token is encountered.
+         */
         loop {
-            let current_token = &self.current_token;
-            match current_token {
-                Some(Token {
-                    token_type: x,
-                    literal: l,
-                }) => {
-                    if x == &TokenType::EOF {
-                        break;
-                    } else if x != &TokenType::Semicolon {
-                        program.statements.push(self.parse_statement());
-                    }
-                }
-                None => {
-                    panic!("Current token doesn't have a value after parser initialization.")
-                }
+            if self.current_token.token_type == TokenType::EOF {
+                break;
+            } else if self.current_token.token_type != TokenType::Semicolon {
+                program.statements.push(self.parse_statement());
             }
             self.next_token();
         }
@@ -85,11 +83,10 @@ impl Parser {
     /// Parser::parse_statement
     /// Parses each different type of statement.
     fn parse_statement(&mut self) -> Statement {
-        // NOTE This unwrap should never panic.
         let Token {
             token_type: tt,
             literal: l,
-        } = &self.current_token.as_ref().unwrap();
+        } = &self.current_token;
 
         match tt {
             TokenType::Let => self.parse_let_statement(),
@@ -100,12 +97,11 @@ impl Parser {
 
     /// Parser::parse_let_statement
     fn parse_let_statement(&mut self) -> Statement {
-        // REVIEW Can this unwrap ever panic?
         if !self.expect_peek(TokenType::Ident) {
             panic!("let statement not followed by an identifier.")
         }
 
-        let ident = self.current_token.as_ref().unwrap();
+        let ident = &self.current_token;
         // REVIEW Is cloning necessary? Done here to avoid using references that would lead to lifetimes.
         let statement = Statement::Let(ident.clone(), Some(Expression::Placeholder));
 
@@ -134,11 +130,10 @@ impl Parser {
 
     fn parse_expression_statement(&mut self) -> Statement {
         let mut statement = Statement::Expr(
-            self.current_token.as_ref().unwrap().clone(),
+            self.current_token.clone(),
             self.parse_expression(Precedence::LOWEST),
         );
 
-        // TODO Ignoring expression for now
         if self.peek_tokentype_is(TokenType::Semicolon) {
             self.next_token();
         }
@@ -146,23 +141,27 @@ impl Parser {
         statement
     }
 
+    ///
+    /// Forwards to the correct parsing function based on registered parsing functions.
+    ///
     fn parse_expression(&mut self, p: Precedence) -> Option<Expression> {
-        let prefix = self
-            .prefix_parse_fns
-            .get(&self.current_token.as_ref().unwrap().token_type);
+        let prefix = self.prefix_parse_fns.get(&self.current_token.token_type);
 
         if let Some(f) = prefix {
-            Some(f().unwrap())
+            Some(f(self).unwrap())
         } else {
-            None
+            todo!("Expression parsing not yet implemented for this expression type!")
         }
     }
 
-    fn parse_prefix_ident() -> Option<Expression> {
+        }
+    }
+
+    fn parse_prefix_ident(&self) -> Option<Expression> {
         Some(Expression::Placeholder)
     }
 
-    fn parse_prefix_minus() -> Option<Expression> {
+    fn parse_prefix_minus(&self) -> Option<Expression> {
         Some(Expression::Placeholder)
     }
 
@@ -171,11 +170,11 @@ impl Parser {
     }
 
     fn cur_tokentype_is(&self, tt: TokenType) -> bool {
-        self.current_token.as_ref().unwrap().token_type == tt
+        self.current_token.token_type == tt
     }
 
     fn peek_tokentype_is(&self, tt: TokenType) -> bool {
-        self.peek_token.as_ref().unwrap().token_type == tt
+        self.peek_token.token_type == tt
     }
 
     fn expect_peek(&mut self, tt: TokenType) -> bool {
@@ -187,16 +186,16 @@ impl Parser {
         }
     }
 
-    fn register_prefixes() -> HashMap<TokenType, fn() -> Option<Expression>> {
+    fn register_prefixes() -> HashMap<TokenType, for<'a> fn(&'a Self) -> Option<Expression>> {
         let mut prefix_fns = HashMap::new();
 
         prefix_fns.insert(
             TokenType::Ident,
-            Self::parse_prefix_ident as fn() -> Option<Expression>,
+            Self::parse_prefix_ident as for<'a> fn(&'a Parser) -> Option<Expression>,
         );
         prefix_fns.insert(
             TokenType::Minus,
-            Self::parse_prefix_minus as fn() -> Option<Expression>, // NOTE This cast is redundant, since the compiler tries to cast this item the same way as the first item, but it is here for the sake of clarity.
+            Self::parse_prefix_minus, // NOTE This cast is redundant, since the compiler tries to cast this item the same way as the first item, but it is here for the sake of clarity.
         );
 
         prefix_fns

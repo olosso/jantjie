@@ -2,6 +2,7 @@
 pub enum TokenType {
     Illegal,
     EOF,
+    SOF,
 
     // Identifiers + literals
     Ident,
@@ -47,6 +48,7 @@ impl TokenType {
         let s = match self {
             TokenType::Illegal => "ILLEGAL",
             TokenType::EOF => "EOF",
+            TokenType::SOF => "SOF",
 
             TokenType::Ident => "IDENT",
             TokenType::Int => "INT",
