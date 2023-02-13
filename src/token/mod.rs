@@ -86,28 +86,6 @@ impl TokenType {
         String::from(s)
     }
 
-    //pub fn from(c: char) -> Self {
-    //    match c {
-    //        '=' => TokenType::Assign,
-    //        '+' => TokenType::Plus,
-
-    //        ',' => TokenType::Comma,
-    //        ';' => TokenType::Semicolon,
-
-    //        '(' => TokenType::Lparen,
-    //        ')' => TokenType::Rparen,
-    //        '{' => TokenType::Lbrace,
-    //        '}' => TokenType::Rbrace,
-
-    //        //'fn' => TokenType::Function,
-    //        //'let' => TokenType::Let,
-
-    //        //"INT" => TokenType::Int(s.parse().unwrap()),
-    //        //"IDENT" => TokenType::Ident(String::from(s)),
-    //        _ => TokenType::Illegal,
-    //    }
-    //}
-
     pub fn keywords() -> Vec<String> {
         let keywords = ["let", "func", "if", "else", "return", "true", "false"];
 
