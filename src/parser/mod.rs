@@ -42,7 +42,6 @@ impl Parser {
     /// Parser::new
     /// Create a new parser given a lexer.
     fn new(lexer: Lexer) -> Self {
-        // NOTE SOF of file tokens should be rewritten immediately. If not, something has gone wrong.
         let mut parser = Parser {
             lexer,
             current_token: Token {
@@ -59,7 +58,9 @@ impl Parser {
 
         parser.next_token();
         parser.next_token();
-        // TODO Maybe check here that SOF tokens have been rewritten? They should be.
+
+        assert!(!parser.cur_tokentype_is(TokenType::SOF));
+        assert!(!parser.peek_tokentype_is(TokenType::SOF));
 
         parser
     }
@@ -139,6 +140,8 @@ impl Parser {
     /// let <identifier> = <expression>;
     /// This is the most complicated statement in the language.
     fn parse_let_statement(&mut self) -> Statement {
+        assert!(self.cur_tokentype_is(TokenType::Let));
+
         // current_token is Let
         let let_token = self.current_token.clone();
 
@@ -167,6 +170,8 @@ impl Parser {
     /// Parses the following statement type:
     /// return <expression>;
     fn parse_return_statement(&mut self) -> Statement {
+        assert!(self.cur_tokentype_is(TokenType::Return));
+
         let return_token = self.current_token.clone();
 
         self.next_token();
@@ -183,6 +188,13 @@ impl Parser {
     /// Parses the following statement type:
     /// <expression>;
     fn parse_expression_statement(&mut self) -> Statement {
+        assert!(
+            self.cur_tokentype_is(TokenType::Int)
+                || self.cur_tokentype_is(TokenType::Ident)
+                || self.cur_tokentype_is(TokenType::Minus)
+                || self.cur_tokentype_is(TokenType::Bang)
+        );
+
         let token = self.current_token.clone();
 
         /*
@@ -205,14 +217,50 @@ impl Parser {
         Statement::Expr(token, expression)
     }
 
-    /// This is the master expression parsing function.
-    /// The idea is the following:
-    /// TODO Explain the idea
+    /// This is the master expression parsing function. It parses every expression found/expected in statements.
+    /// Let's assume the expression is -1 + 2 * 3;, which should result in ((-1) + (2 * 3))
+    /// 0. parse_expression(LOWEST) (*1)
+    /// 1. Current token is -, which has a prefix function. Get it and call it.
+    /// 2. Before the prefix creates a PrefixExpression and returns,
+    ///    it advances the lexer and calls parse_expression(PREFIX) (*2).
+    /// 3. Current token is 1. It has prefix handler. Get it and call it.
+    /// 4. The prefix function for IntTokens simply creates an IntegerLiteral expression.
+    /// 3. (*2) Continues. The loop condition fails, since the
+    ///    next token (+) has lower precedence.
+    /// 4. (*2) Returns Expression::Int(1)
+    /// 5. The prefix function from the 2. step continues and returns a Expression::Prefix(-, 1)
+    /// 6. (*1) Continues. The Expression::Prefix(-, 1) is assigned to left.
+    /// 7. The loop condition evaluates to true, because precedence LOWEST < SUM.
+    /// 8. Peek token is +, which has a infix function. Get it.
+    /// 9. Advance lexer, now current token is +.
+    /// 10. Call the infix handler retrieved in 8 with the Expression::Prefix(-, 1) as an argument.
+    /// 11. The infix handler stores the precedence of +, and advances the lexer. Current token is 2.
+    /// 12. parse_expression(SUM) (*3)
+    /// 13. 2 has a prefix handler, it creates a IntegerLiteral(2), which is assigned to left.
+    /// 14. The loop condition evaluates to true, because SUM < PRODUCT.
+    /// 15. Get the infix function of *.
+    /// 16. Advance the lexer, current token is now *.
+    /// 17. Call the infix handler retrieved in 15 with the IntegerLiteral(2) as an argument.
+    /// 18. The infix handler stores the precedence of *, and advances the lexer. Current token is 3.
+    /// 19. parse_expression(LOWEST) (*4)
+    /// 20. 3 has a prefix handler, it creates a IntegerLiteral(3), which is assigned to left.
+    /// 21. The loop condition evaluates to false, since the next token is ;
+    /// 22. (*4) Returns IntegerLiteral(3)
+    /// 23. The infix handler from step 18 continues.
+    /// 24. It returns a Expression::Infix(IntegerLiteral(2), *, IntegerLiteral(3))
+    /// 25. (*3) Continues with left = Expression::Infix(IntegerLiteral(2), *, IntegerLiteral(3)).
+    /// 26. The loop condition evaluates to false, since the next token is ;
+    /// 27. (*3) Returns left = Expression::Infix(IntegerLiteral(2), *, IntegerLiteral(3)).
+    /// 28. The infix call from step 11 continues.
+    /// 29. It returns
+    ///     Expression::Infix(
+    ///         Expression::Prefix(-, 1),
+    ///         +,
+    ///         Expression::Infix(IntegerLiteral(2), *, IntegerLiteral(3))
+    ///     )
+    /// 30. (*1) Continues, and the loop condition evaluates to false.
+    /// 31. (*1) Returns the Expression formed in step 29.
     fn parse_expression(&mut self, precedence: Precedence) -> Option<Expression> {
-        // let prefix_handler = self
-        //     .prefix_parse_fns
-        //     .get(&self.current_token.token_type)
-        //     .expect("No prefix function found!");
         let prefix_handler =
             if let Some(f) = self.prefix_parse_fns.get(&self.current_token.token_type) {
                 f
@@ -227,49 +275,49 @@ impl Parser {
         let mut left = prefix_handler(self);
 
         while !self.peek_tokentype_is(TokenType::Semicolon) && precedence < self.peek_precedence() {
-            let current_token_type = &self.peek_token.token_type.clone();
-            let infix_handler = if let Some(f) = self.infix_parse_fns.get(current_token_type) {
+            let peek_token_type = &self.peek_token.token_type.clone();
+            let infix_handler = if let Some(f) = self.infix_parse_fns.get(peek_token_type) {
                 *f
             } else {
                 return Some(left);
             };
 
             self.next_token();
-            left = infix_handler(self, left); //
+            left = infix_handler(self, left);
         }
 
         Some(left)
     }
 
-    /// Whenever a token such as "foo" in "1 * foo" is encountered,
-    /// it is wrapped into an Identifier expression.
     /// Token { ident, "foo" } => Identifier { Token { ident, "foo" }, "foo" }
     /// Note that this is a prefix function -> It can be a leaf in the AST.
     fn parse_identifier(&mut self) -> Expression {
+        assert!(self.cur_tokentype_is(TokenType::Ident));
+
         Expression::Identifier(
             self.current_token.clone(),
             self.current_token.literal.clone(),
         )
     }
 
-    /// Whenever a token such as "1" in "1 * foo" is encountered,
-    /// it is wrapped into an IntegerLiteral expression.
     /// Token { int, "1" } => IntegerLiteral { Token { int, "1" }, 1 }
     /// Note that this is a prefix function -> It can be a leaf in the AST.
     fn parse_integer_literal(&mut self) -> Expression {
-        let current_token = self.current_token.clone();
-        let int = current_token.literal.parse::<i32>();
+        assert!(self.cur_tokentype_is(TokenType::Int));
 
-        if let Ok(i) = int {
-            Expression::IntegerLiteral(self.current_token.clone(), i)
-        } else {
-            panic!()
-        }
+        let current_token = self.current_token.clone();
+        let int: i32 = current_token
+            .literal
+            .parse()
+            .expect("Failed to parse assumed Integer Token");
+
+        Expression::IntegerLiteral(self.current_token.clone(), int)
     }
 
     /// This is only called from parse_expression.
-    /// Called for the following tokens: "-" and "!"
     fn parse_prefix_expression(&mut self) -> Expression {
+        assert!(self.cur_tokentype_is(TokenType::Minus) || self.cur_tokentype_is(TokenType::Bang));
+
         /*
          * Store the current token information.
          * Since this token is a prefix, it is one of the following: -, !.
@@ -283,10 +331,10 @@ impl Parser {
         self.next_token();
 
         /*
-         * We continue expression parsing by setting the Precedence to Prefix, which is very high.
-         * This means that the associative power of a prefix is high.
+         * We continue expression parsing by setting the Precedence to Prefix,
+         * which means it has high associative power.
          * Indeed, only a function call has higher precedence.
-         * This: -1 + 2 will be evaluated (-1) + 2, and not -(1 + 2).
+         * The expression -1 + 2 will be evaluated ((-1) + 2), and not -(1 + 2).
          */
         let right = self
             .parse_expression(Precedence::PREFIX)
@@ -295,9 +343,18 @@ impl Parser {
         Expression::Prefix(current_token, literal, Box::new(right))
     }
 
-    /// Parse expression according to a binary operator +, -, == etc.
-    /// Current symbol must be one of those.
     fn parse_infix_expression(&mut self, left: Expression) -> Expression {
+        assert!(
+            self.cur_tokentype_is(TokenType::Plus)
+                || self.cur_tokentype_is(TokenType::Minus)
+                || self.cur_tokentype_is(TokenType::Asterisk)
+                || self.cur_tokentype_is(TokenType::Slash)
+                || self.cur_tokentype_is(TokenType::Equal)
+                || self.cur_tokentype_is(TokenType::NotEqual)
+                || self.cur_tokentype_is(TokenType::LT)
+                || self.cur_tokentype_is(TokenType::GT)
+        );
+
         // Store the current values of token, because next we are going to forward the lexer.
         let current_token = self.current_token.clone();
         let operator = self.current_token.literal.clone();
@@ -308,7 +365,14 @@ impl Parser {
         // What comes next, I wonder.
         self.next_token();
 
-        // Whatever comes out of here will be set to the right child node of an Infix expression.
+        /*
+         * Whatever comes out of here will be set to the right child node of an Infix expression.
+         *
+         * The important bit here, is that for this parse_expression the current token will be
+         * something like an identifier, while the precedence will be that of the previous infix operator.
+         * This allows the function to compare the Precedence of the previous operator with the next ones,
+         * which determines which operator get to keep the current token.
+         */
         let right = self
             .parse_expression(precedence)
             .expect("Failed to parse Right node of InfixExpression");
@@ -316,6 +380,7 @@ impl Parser {
         Expression::Infix(current_token, Box::new(left), operator, Box::new(right))
     }
 
+    // Helper function.
     fn cur_tokentype_is(&self, tt: TokenType) -> bool {
         self.current_token.token_type == tt
     }
@@ -354,6 +419,7 @@ impl Parser {
         }
     }
 
+    /// A helper function for debugging purposes.
     pub fn print_tokens(&self) {
         println!(
             "###PARSER_TOKENS###:\nCURRENT_TOKEN: {:?}\nNEXT_TOKEN: {:?}",
