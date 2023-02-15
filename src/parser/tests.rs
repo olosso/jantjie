@@ -259,4 +259,58 @@ mod parser_tests {
             );
         }
     }
+
+    #[test]
+    fn test_longer_infix_operations() {
+        let program = init("5+5+5");
+        println!("{:#?}", program.statements);
+        println!("{}", program.to_string());
+        // Does the program only contain 1 statement?
+        assert_eq!(program.statements.len(), 1);
+
+        // Has the program correctly parsed it as a ExpressionStatement?
+        assert!(matches!(program.statements[0], Statement::Expr(_, _)));
+        assert!(matches!(
+            program.statements[0].expr(),
+            Expression::Infix(..)
+        ));
+        assert!(matches!(
+            **program.statements[0].expr().left().unwrap(),
+            Expression::Infix(..)
+        ));
+        assert!(matches!(
+            **program.statements[0].expr().left().unwrap().left().unwrap(),
+            Expression::IntegerLiteral(..)
+        ));
+        assert!(matches!(
+            **program.statements[0]
+                .expr()
+                .left()
+                .unwrap()
+                .right()
+                .unwrap(),
+            Expression::IntegerLiteral(..)
+        ));
+        assert!(matches!(
+            **program.statements[0].expr().right().unwrap(),
+            Expression::IntegerLiteral(..)
+        ));
+    }
+
+    #[test]
+    fn test_longer_infix_operations_2() {
+        let program = init("-5+5+5");
+        assert_eq!(program.to_string(), "(((-5) + 5) + 5)")
+    }
+    #[test]
+    fn test_longer_infix_operations_3() {
+        let program = init("-1 + 2 * 3");
+        println!("{}", program.to_string());
+        println!("{:#?}", program.statements);
+        assert!(matches!(
+            *program.statements[0].expr(),
+            Expression::Infix(_, _, _, _)
+        ));
+        // assert_eq!(program.to_string(), "((-1) + (2 * 3))")
+    }
 }
