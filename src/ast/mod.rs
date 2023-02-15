@@ -65,7 +65,7 @@ impl Node for Expression {
             Expression::Prefix(_, o, r) => {
                 format!("({}{})", o, r.to_string())
             }
-            Expression::Infix(t, l, o, r) => {
+            Expression::Infix(_, l, o, r) => {
                 format!("({} {} {})", l.to_string(), o, r.to_string())
             }
             _ => panic!(),

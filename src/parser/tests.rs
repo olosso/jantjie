@@ -28,9 +28,6 @@ mod parser_tests {
         assert_eq!(parsed.token().unwrap().literal, "let");
         assert_eq!(parsed.token().unwrap().token_type, TokenType::Let);
         assert_eq!(parsed.name().unwrap(), "x");
-
-        // TODO Evaluate expressions
-        //assert_eq!(parsed.expr().to_string(), "5");
     }
 
     #[test]
@@ -76,7 +73,10 @@ mod parser_tests {
         assert!(matches!(parsed, Statement::Return(_, _)));
         assert_eq!(parsed.token().unwrap().literal, "return");
         assert_eq!(parsed.token().unwrap().token_type, TokenType::Return);
-        assert_eq!(parsed.expr(), &Expression::Placeholder);
+        assert_eq!(
+            *parsed.expr(),
+            Expression::IntegerLiteral(Token::new(TokenType::Int, "10".to_string()), 10)
+        );
     }
 
     #[test]
@@ -302,6 +302,7 @@ mod parser_tests {
         let program = init("-5+5+5");
         assert_eq!(program.to_string(), "(((-5) + 5) + 5)")
     }
+
     #[test]
     fn test_longer_infix_operations_3() {
         let program = init("-1 + 2 * 3");
@@ -311,6 +312,11 @@ mod parser_tests {
             *program.statements[0].expr(),
             Expression::Infix(_, _, _, _)
         ));
-        // assert_eq!(program.to_string(), "((-1) + (2 * 3))")
+    }
+
+    #[test]
+    fn test_longer_let_with_expressions() {
+        let mut program = init("let x = -5+5+5;");
+        assert_eq!(program.to_string(), "let x = (((-5) + 5) + 5);");
     }
 }

@@ -158,13 +158,24 @@ impl Parser {
             panic!("Identifier not followed by an assignment in let statement.")
         };
         // current_token is Assign
+        //
+        if !(self.expect_peek(TokenType::Ident)
+            || self.expect_peek(TokenType::Int)
+            || self.expect_peek(TokenType::Minus)
+            || self.expect_peek(TokenType::Bang))
+        {
+            panic!("Identifier not followed by something other than expression.")
+        };
 
-        // TODO
-        while !self.cur_tokentype_is(TokenType::Semicolon) {
-            self.next_token();
-        }
+        let expression = self
+            .parse_expression(Precedence::LOWEST)
+            .expect("Failed to parse expression in LetStatement.");
 
-        Statement::Let(let_token, name, Expression::Placeholder)
+        if !self.expect_peek(TokenType::Semicolon) {
+            panic!("LetStatement not finished with semicolon.")
+        };
+
+        Statement::Let(let_token, name, expression)
     }
 
     /// Parses the following statement type:
@@ -174,15 +185,23 @@ impl Parser {
 
         let return_token = self.current_token.clone();
 
-        self.next_token();
-        // current_token should start an expression.
+        if !(self.expect_peek(TokenType::Ident)
+            || self.expect_peek(TokenType::Int)
+            || self.expect_peek(TokenType::Minus)
+            || self.expect_peek(TokenType::Bang))
+        {
+            panic!("Identifier not followed by something other than expression.")
+        };
 
-        // TODO
-        while !self.cur_tokentype_is(TokenType::Semicolon) {
-            self.next_token();
-        }
+        let expression = self
+            .parse_expression(Precedence::LOWEST)
+            .expect("Failed to parse expression in LetStatement.");
 
-        Statement::Return(return_token, Expression::Placeholder)
+        if !self.expect_peek(TokenType::Semicolon) {
+            panic!("LetStatement not finished with semicolon.")
+        };
+
+        Statement::Return(return_token, expression)
     }
 
     /// Parses the following statement type:
