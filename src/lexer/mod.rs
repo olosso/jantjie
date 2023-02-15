@@ -11,6 +11,8 @@ pub struct Lexer {
 
 impl Lexer {
     ///
+    /// Lexer produces tokens. Produces tokens only when next_token is called. Does not lex anything prematurely!
+    ///
     /// Usage:
     /// let mut l = Lexer::new(String::from(input));
     /// let mut token = l.next_token();
@@ -147,7 +149,7 @@ impl Lexer {
                         self.read_char();
                         return Token::new(TokenType::NotEqual, "!=".to_string());
                     }
-                    _ => return Token::new(TokenType::Not, "!".to_string()),
+                    _ => return Token::new(TokenType::Bang, "!".to_string()),
                 }
             }
             ';' => Token::new(TokenType::Semicolon, self.ch.to_string()),
@@ -158,8 +160,10 @@ impl Lexer {
             ',' => Token::new(TokenType::Comma, self.ch.to_string()),
             '+' => Token::new(TokenType::Plus, self.ch.to_string()),
             '-' => Token::new(TokenType::Minus, self.ch.to_string()),
-            '*' => Token::new(TokenType::Multiplication, self.ch.to_string()),
-            '/' => Token::new(TokenType::Division, self.ch.to_string()),
+            '<' => Token::new(TokenType::LT, self.ch.to_string()),
+            '>' => Token::new(TokenType::GT, self.ch.to_string()),
+            '*' => Token::new(TokenType::Asterisk, self.ch.to_string()),
+            '/' => Token::new(TokenType::Slash, self.ch.to_string()),
             '\0' => Token::new(TokenType::EOF, "EOF".to_string()),
             _ => Token::new(TokenType::Illegal, "ILLEGAL".to_string()),
         };
@@ -486,7 +490,7 @@ true false;
                 literal: ";".to_string(),
             },
             Token {
-                token_type: TokenType::Not,
+                token_type: TokenType::Bang,
                 literal: "!".to_string(),
             },
             Token {
@@ -494,19 +498,19 @@ true false;
                 literal: "-".to_string(),
             },
             Token {
-                token_type: TokenType::Division,
+                token_type: TokenType::Slash,
                 literal: "/".to_string(),
             },
             Token {
-                token_type: TokenType::Multiplication,
+                token_type: TokenType::Asterisk,
                 literal: "*".to_string(),
             },
             Token {
-                token_type: TokenType::Multiplication,
+                token_type: TokenType::Asterisk,
                 literal: "*".to_string(),
             },
             Token {
-                token_type: TokenType::Division,
+                token_type: TokenType::Slash,
                 literal: "/".to_string(),
             },
             Token {
@@ -574,7 +578,7 @@ true false;
                 literal: ";".to_string(),
             },
             Token {
-                token_type: TokenType::Not,
+                token_type: TokenType::Bang,
                 literal: "!".to_string(),
             },
             Token {

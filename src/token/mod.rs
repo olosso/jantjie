@@ -1,3 +1,5 @@
+use crate::parser::Precedence;
+
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum TokenType {
     Illegal,
@@ -12,9 +14,9 @@ pub enum TokenType {
     Assign,
     Plus,
     Minus,
-    Multiplication,
-    Division,
-    Not,
+    Asterisk,
+    Slash,
+    Bang,
     Equal,
     NotEqual,
     GT,
@@ -56,9 +58,9 @@ impl TokenType {
             TokenType::Assign => "=",
             TokenType::Plus => "+",
             TokenType::Minus => "-",
-            TokenType::Multiplication => "*",
-            TokenType::Division => "/",
-            TokenType::Not => "!",
+            TokenType::Asterisk => "*",
+            TokenType::Slash => "/",
+            TokenType::Bang => "!",
             TokenType::Equal => "==",
             TokenType::NotEqual => "!=",
             TokenType::GT => ">",
@@ -129,6 +131,24 @@ impl Token {
             token_type,
             literal,
         }
+    }
+
+    /// Returns the precedence level of each operator used in mathematical operations.
+    /// Returns an Error if called with on an non-math operator.
+    pub fn precedence(&self) -> Option<Precedence> {
+        let p = match self.token_type {
+            TokenType::Equal => Precedence::EQUALS,
+            TokenType::NotEqual => Precedence::EQUALS,
+            TokenType::LT => Precedence::LESSGREATER,
+            TokenType::GT => Precedence::LESSGREATER,
+            TokenType::Plus => Precedence::SUM,
+            TokenType::Minus => Precedence::SUM,
+            TokenType::Asterisk => Precedence::PRODUCT,
+            TokenType::Slash => Precedence::PRODUCT,
+            _ => return None,
+        };
+
+        Some(p)
     }
 }
 
