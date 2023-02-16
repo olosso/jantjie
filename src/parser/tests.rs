@@ -7,7 +7,6 @@ mod parser_tests {
 
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
-        parser.print_tokens();
         parser.parse_program()
     }
 
@@ -191,51 +190,27 @@ mod parser_tests {
         assert!(matches!(parsed_expr, Expression::Prefix(_, _, _)))
     }
 
-    struct InfixTest {
+    struct InfixTest<L, R> {
         input: String,
-        left_value: i32,
+        left: L,
         operator: String,
-        right_value: i32,
+        right: R,
     }
 
-    impl InfixTest {
-        fn new(input: String, left_value: i32, operator: String, right_value: i32) -> Self {
+    impl<L, R> InfixTest<L, R> {
+        fn new(input: &str, left: L, operator: &str, right: R) -> Self {
             Self {
-                input,
-                left_value,
-                operator,
-                right_value,
+                input: input.to_string(),
+                left,
+                operator: operator.to_string(),
+                right,
             }
         }
     }
 
-    #[test]
-    fn test_infix_operations() {
-        let infix_tests = vec![
-            InfixTest::new("5+5".to_string(), 5, "+".to_string(), 5),
-            InfixTest::new("5-5".to_string(), 5, "-".to_string(), 5),
-            InfixTest::new("5*5".to_string(), 5, "*".to_string(), 5),
-            InfixTest::new("5/5".to_string(), 5, "/".to_string(), 5),
-            InfixTest::new("5>5".to_string(), 5, ">".to_string(), 5),
-            InfixTest::new("5<5".to_string(), 5, "<".to_string(), 5),
-            InfixTest::new("5==5".to_string(), 5, "==".to_string(), 5),
-            InfixTest::new("5!=5".to_string(), 5, "!=".to_string(), 5),
-        ];
-
-        for test in infix_tests {
-            let program = init(&test.input);
-
-            // Does the program only contain 1 statement?
-            assert_eq!(program.statements.len(), 1);
-
-            // Has the program correctly parsed it as a ExpressionStatement?
-            assert!(matches!(program.statements[0], Statement::Expr(_, _)));
-
-            // Has the ExpressionStatement Token been parsed correctly?
-            assert_eq!(
-                program.statements[0].token_literal(),
-                test.left_value.to_string()
-            );
+    impl InfixTest<i32, i32> {
+        fn test(&self) {
+            let program = init(&self.input);
 
             // Has the program correctly parsed it as a InfixExpression?
             assert!(matches!(
@@ -243,28 +218,125 @@ mod parser_tests {
                 Expression::Infix(_, _, _, _)
             ));
 
+            // Does the program only contain 1 statement?
+            assert_eq!(program.statements.len(), 1);
+
+            LiteralExpressionTest::new(program.statements[0].expr().left().unwrap(), self.left)
+                .test();
             // Has the Infix operator been parsed correctly?
-            assert_eq!(program.statements[0].expr().op().unwrap(), test.operator);
+            assert_eq!(program.statements[0].expr().op().unwrap(), self.operator);
 
-            // Has the program correctly the Left node as 5?
-            assert_eq!(
-                program.statements[0].expr().left().unwrap().int().unwrap(),
-                5
-            );
+            LiteralExpressionTest::new(program.statements[0].expr().right().unwrap(), self.right)
+                .test();
+        }
+    }
 
-            // Has the program correctly the Right node as 5?
-            assert_eq!(
-                program.statements[0].expr().right().unwrap().int().unwrap(),
-                5
-            );
+    impl InfixTest<&str, &str> {
+        fn test(&self) {
+            let program = init(&self.input);
+
+            // Has the program correctly parsed it as a InfixExpression?
+            assert!(matches!(
+                program.statements[0].expr(),
+                Expression::Infix(_, _, _, _)
+            ));
+
+            // Does the program only contain 1 statement?
+            assert_eq!(program.statements.len(), 1);
+
+            LiteralExpressionTest::new(
+                program.statements[0].expr().left().unwrap(),
+                self.left.to_owned(),
+            )
+            .test();
+
+            // Has the Infix operator been parsed correctly?
+            assert_eq!(program.statements[0].expr().op().unwrap(), self.operator);
+
+            LiteralExpressionTest::new(
+                program.statements[0].expr().right().unwrap(),
+                self.right.to_owned(),
+            )
+            .test();
+        }
+    }
+
+    impl InfixTest<bool, bool> {
+        fn test(&self) {
+            let program = init(&self.input);
+
+            // Has the program correctly parsed it as a InfixExpression?
+            assert!(matches!(
+                program.statements[0].expr(),
+                Expression::Infix(_, _, _, _)
+            ));
+
+            // Does the program only contain 1 statement?
+            assert_eq!(program.statements.len(), 1);
+
+            LiteralExpressionTest::new(
+                program.statements[0].expr().left().unwrap(),
+                self.left.to_owned(),
+            )
+            .test();
+
+            // Has the Infix operator been parsed correctly?
+            assert_eq!(program.statements[0].expr().op().unwrap(), self.operator);
+
+            LiteralExpressionTest::new(
+                program.statements[0].expr().right().unwrap(),
+                self.right.to_owned(),
+            )
+            .test();
+        }
+    }
+
+    #[test]
+    fn test_infix_operations() {
+        let infix_tests = vec![
+            InfixTest::new("5+5", 5, "+", 5),
+            InfixTest::new("5-5", 5, "-", 5),
+            InfixTest::new("5*5", 5, "*", 5),
+            InfixTest::new("5/5", 5, "/", 5),
+            InfixTest::new("5>5", 5, ">", 5),
+            InfixTest::new("5<5", 5, "<", 5),
+            InfixTest::new("5==5", 5, "==", 5),
+            InfixTest::new("5!=5", 5, "!=", 5),
+        ];
+
+        for test in infix_tests.into_iter() {
+            test.test()
+        }
+
+        let infix_tests = vec![
+            InfixTest::new("foo+bar", "foo", "+", "bar"),
+            InfixTest::new("foo-bar", "foo", "-", "bar"),
+            InfixTest::new("foo*bar", "foo", "*", "bar"),
+            InfixTest::new("foo/bar", "foo", "/", "bar"),
+            InfixTest::new("foo>bar", "foo", ">", "bar"),
+            InfixTest::new("foo<bar", "foo", "<", "bar"),
+            InfixTest::new("foo==bar", "foo", "==", "bar"),
+            InfixTest::new("foo!=bar", "foo", "!=", "bar"),
+        ];
+
+        for test in infix_tests.into_iter() {
+            test.test()
+        }
+
+        let infix_tests = vec![
+            InfixTest::new("true==false", true, "==", false),
+            InfixTest::new("true!=false", true, "!=", false),
+        ];
+
+        for test in infix_tests.into_iter() {
+            test.test()
         }
     }
 
     #[test]
     fn test_longer_infix_operations() {
         let program = init("5+5+5");
-        println!("{:#?}", program.statements);
-        println!("{}", program.to_string());
+
         // Does the program only contain 1 statement?
         assert_eq!(program.statements.len(), 1);
 
@@ -306,8 +378,6 @@ mod parser_tests {
     #[test]
     fn test_longer_infix_operations_3() {
         let program = init("-1 + 2 * 3");
-        println!("{}", program.to_string());
-        println!("{:#?}", program.statements);
         assert!(matches!(
             *program.statements[0].expr(),
             Expression::Infix(_, _, _, _)
@@ -318,5 +388,136 @@ mod parser_tests {
     fn test_longer_let_with_expressions() {
         let mut program = init("let x = -5+5+5;");
         assert_eq!(program.to_string(), "let x = (((-5) + 5) + 5);");
+    }
+
+    #[test]
+    fn test_unnecessarily_complicated_expression() {
+        let mut program = init("3 + 4 * 5 == 3 * 1 + 4 * 5");
+        assert_eq!(
+            program.to_string(),
+            "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))"
+        );
+    }
+
+    fn test_integer_literal(exp: &Expression, value: i32) {
+        assert!(
+            matches!(exp, Expression::IntegerLiteral(..)),
+            "Expression not IntegerLiteral, got {exp:?}",
+        );
+
+        assert_eq!(
+            exp.int().unwrap(),
+            value,
+            "IntegerLiteral doesn't have value {value}, got {:?}",
+            exp.int().unwrap()
+        );
+
+        assert_eq!(
+            exp.token_literal(),
+            value.to_string(),
+            "IntegerLiteral doesn't have literal {value}, got {:?}",
+            exp.token_literal()
+        );
+    }
+
+    fn test_identifier(exp: &Expression, value: &String) {
+        assert!(
+            matches!(exp, Expression::Identifier(..)),
+            "Expression not Identifier, got {exp:?}",
+        );
+
+        assert_eq!(
+            &exp.to_string(),
+            value,
+            "Identifier doesn't have value {value}, got {:?}",
+            &exp.to_string()
+        );
+
+        assert_eq!(
+            &exp.token_literal(),
+            value,
+            "Identifier doesn't have literal {value}, got {:?}",
+            &exp.token_literal()
+        );
+    }
+
+    fn test_bool(exp: &Expression, value: bool) {
+        assert!(
+            matches!(exp, Expression::Bool(..)),
+            "Expression not Bool, got {exp:?}",
+        );
+
+        assert_eq!(
+            &exp.buul().unwrap(),
+            &value,
+            "Bool doesn't have value {value}, got {:?}",
+            &exp.buul().unwrap()
+        );
+
+        assert_eq!(
+            &exp.token_literal(),
+            &value.to_string(),
+            "Identifier doesn't have literal {value}, got {:?}",
+            &exp.token_literal()
+        );
+    }
+
+    struct LiteralExpressionTest<'a, T> {
+        exp: &'a Expression,
+        expected: T,
+    }
+
+    impl<'a, T> LiteralExpressionTest<'a, T> {
+        fn new(exp: &'a Expression, expected: T) -> Self {
+            LiteralExpressionTest { exp, expected }
+        }
+    }
+
+    impl<'a> LiteralExpressionTest<'a, i32> {
+        fn test(&self) {
+            test_integer_literal(self.exp, self.expected)
+        }
+    }
+
+    impl<'a> LiteralExpressionTest<'a, String> {
+        fn test(&self) {
+            test_identifier(self.exp, &self.expected)
+        }
+    }
+
+    impl<'a> LiteralExpressionTest<'a, bool> {
+        fn test(&self) {
+            test_bool(self.exp, self.expected)
+        }
+    }
+
+    #[test]
+    fn test_literal_expression() {
+        LiteralExpressionTest::new(
+            &Expression::IntegerLiteral(Token::new(TokenType::Int, "10".to_string()), 10),
+            10,
+        )
+        .test();
+
+        LiteralExpressionTest::new(
+            &Expression::Identifier(
+                Token::new(TokenType::Ident, "foo".to_string()),
+                "foo".to_string(),
+            ),
+            "foo".to_string(),
+        )
+        .test();
+
+        LiteralExpressionTest::new(
+            &Expression::Bool(Token::new(TokenType::True, "true".to_string()), true),
+            true,
+        )
+        .test();
+
+        LiteralExpressionTest::new(
+            &Expression::Bool(Token::new(TokenType::True, "false".to_string()), false),
+            false,
+        )
+        .test();
     }
 }
