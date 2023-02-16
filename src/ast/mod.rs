@@ -14,14 +14,18 @@ pub trait Node {
 type Operator = String;
 type Left = Box<Expression>;
 type Right = Box<Expression>;
-#[derive(Debug, Clone, PartialEq, Eq)]
+type Condition = Box<Statement>;
+type Consequence = Box<Statement>;
+type Alternative = Box<Statement>;
+#[derive(Debug, Clone)]
 pub enum Expression {
-    Placeholder,                         // For initialization and stuff
-    Bool(Token, bool),                   // true,  Token = Token {True, "true"}
-    IntegerLiteral(Token, i32),          // 42,    Token = Token {Int, 42}
-    Identifier(Token, String),           // foo,   Token = Token {Ident, "foo"}
-    Prefix(Token, Operator, Right),      // !true, Token = Token {Bang, "!"}
+    Placeholder,                                            // For initialization and stuff
+    Bool(Token, bool),                                      // true,  Token = Token {True, "true"}
+    IntegerLiteral(Token, i32),                             // 42,    Token = Token {Int, 42}
+    Identifier(Token, String),                              // foo,   Token = Token {Ident, "foo"}
+    Prefix(Token, Operator, Right),                         // !true, Token = Token {Bang, "!"}
     Infix(Token, Left, Operator, Right), // a + b, Token = Token {Plus, "+"}, Operator = "+"
+    If(Token, Condition, Consequence, Option<Alternative>), // if (condition) { consequence } else { alternative }, Token = Token {If, "if"}, Operator = "+"
 }
 
 impl Expression {
@@ -64,6 +68,36 @@ impl Expression {
             None
         }
     }
+
+    pub fn condition(&self) -> Option<&Condition> {
+        if let Expression::If(_, c, ..) = self {
+            Some(c)
+        } else {
+            None
+        }
+    }
+
+    pub fn consequence(&self) -> Option<&Consequence> {
+        if let Expression::If(_, _, c, ..) = self {
+            Some(c)
+        } else {
+            None
+        }
+    }
+
+    /*
+     * Option, option...
+     * The first option is there because this function might be called on
+     * some Expression other than an If.
+     * The second option is there because an IfExpression might not have an alternative.
+     */
+    pub fn alternative(&self) -> Option<&Option<Consequence>> {
+        if let Expression::If(_, _, _, a) = self {
+            Some(a)
+        } else {
+            None
+        }
+    }
 }
 
 impl Node for Expression {
@@ -78,6 +112,24 @@ impl Node for Expression {
             Expression::Infix(_, l, o, r) => {
                 format!("({} {} {})", l.to_string(), o, r.to_string())
             }
+            Expression::If(t, condition, consequence, alt) => {
+                if let Some(alt) = alt {
+                    format!(
+                        "({} {} {{ {} }} else {{ {} }})",
+                        t.literal,
+                        condition.to_string(),
+                        consequence.to_string(),
+                        alt.to_string()
+                    )
+                } else {
+                    format!(
+                        "({} {} {{ {} }})",
+                        t.literal,
+                        condition.to_string(),
+                        consequence.to_string(),
+                    )
+                }
+            }
             _ => panic!(),
         }
     }
@@ -89,6 +141,7 @@ impl Node for Expression {
             Expression::IntegerLiteral(t, ..) => t.literal.clone(),
             Expression::Prefix(t, ..) => t.literal.clone(),
             Expression::Infix(t, ..) => t.literal.clone(),
+            Expression::If(t, ..) => t.literal.clone(),
             _ => panic!(),
         }
     }
@@ -105,6 +158,7 @@ pub enum Statement {
     Let(Token, Name, Expression), // let <identifier> = <expression>; - Token is the Let token
     Return(Token, Expression),    // return (<expression>); - Token is the Return token
     Expr(Token, Expression),      // <expression>(;) - Token is the first Token of the expression.
+    Block(Token, Vec<Statement>),
 }
 
 impl Statement {
@@ -113,6 +167,7 @@ impl Statement {
             Statement::Let(t, ..) => t.literal.clone(),
             Statement::Return(t, ..) => t.literal.clone(),
             Statement::Expr(t, _) => t.literal.clone(),
+            Statement::Block(t, _) => t.literal.clone(),
         }
     }
 
@@ -128,12 +183,24 @@ impl Statement {
             Statement::Let(.., e) => e,
             Statement::Return(.., e) => e,
             Statement::Expr(.., e) => e,
+            Statement::Block(..) => todo!("Not sure what to do here."),
         }
     }
 
     pub fn token(&self) -> Option<&Token> {
         match self {
-            Statement::Let(t, ..) | Statement::Expr(t, _) | Statement::Return(t, ..) => Some(t),
+            Statement::Let(t, ..)
+            | Statement::Expr(t, _)
+            | Statement::Return(t, ..)
+            | Statement::Block(t, ..) => Some(t),
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        if let Statement::Block(_, v) = self {
+            v.len()
+        } else {
+            1
         }
     }
 }
@@ -152,9 +219,12 @@ impl Node for Statement {
             Statement::Return(t, e) => {
                 format!("{} {};", t.literal, e.to_string())
             }
-            Statement::Expr(t, e) => {
-                format!("{}", e.to_string())
-            }
+            Statement::Expr(_, e) => e.to_string(),
+            Statement::Block(_, e) => e
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<String>>()
+                .join("; "),
         }
     }
 
@@ -163,6 +233,7 @@ impl Node for Statement {
             Statement::Let(t, ..) => t.literal.clone(),
             Statement::Return(t, ..) => t.literal.clone(),
             Statement::Expr(t, ..) => t.literal.clone(),
+            Statement::Block(t, ..) => t.literal.clone(),
         }
     }
 

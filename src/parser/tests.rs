@@ -72,10 +72,7 @@ mod parser_tests {
         assert!(matches!(parsed, Statement::Return(_, _)));
         assert_eq!(parsed.token().unwrap().literal, "return");
         assert_eq!(parsed.token().unwrap().token_type, TokenType::Return);
-        assert_eq!(
-            *parsed.expr(),
-            Expression::IntegerLiteral(Token::new(TokenType::Int, "10".to_string()), 10)
-        );
+        assert!(matches!(*parsed.expr(), Expression::IntegerLiteral(..)));
     }
 
     /*
@@ -437,5 +434,66 @@ mod parser_tests {
     fn test_parenthesis_panic() {
         PrecedenceTest::new("-(1 + 1", "(-(1 + 1))").test();
         PrecedenceTest::new("1 + (2 + 3 * 4", "(1 + ((2 + 3) * 4))");
+    }
+
+    #[test]
+    fn test_if_expression() {
+        let program = init("if (a<b) { a }");
+        let expression = &program.statements[0].expr();
+
+        assert!(matches!(expression, Expression::If(..)));
+
+        assert_eq!(expression.token_literal(), "if".to_string());
+
+        let infix = expression.condition().unwrap();
+        InfixTest::new(&infix.to_string(), "a", "<", "b");
+
+        let consequence = expression.consequence().unwrap();
+        assert!(matches!(**consequence, Statement::Block(..)));
+
+        let alternative = expression.alternative().unwrap();
+        assert!(alternative.is_none());
+    }
+
+    #[test]
+    fn test_if_else_expression() {
+        let program = init("if (a<b) { a } else { b }");
+
+        let expression = &program.statements[0].expr();
+
+        assert!(matches!(expression, Expression::If(..)));
+
+        assert_eq!(expression.token_literal(), "if".to_string());
+
+        let infix = expression.condition().unwrap();
+        InfixTest::new(&infix.to_string(), "a", "<", "b");
+
+        let consequence = expression.consequence().unwrap();
+        assert!(matches!(**consequence, Statement::Block(..)));
+
+        let alternative = expression.alternative().unwrap().clone().unwrap();
+        assert!(matches!(*alternative, Statement::Block(..)));
+    }
+
+    #[test]
+    fn test_if_else_expression2() {
+        let program = init("if (a<b) { a; b; c } else { b; b; c }");
+
+        let expression = &program.statements[0].expr();
+
+        assert!(matches!(expression, Expression::If(..)));
+
+        assert_eq!(expression.token_literal(), "if".to_string());
+
+        let infix = expression.condition().unwrap();
+        InfixTest::new(&infix.to_string(), "a", "<", "b");
+
+        let consequence = expression.consequence().unwrap();
+        assert!(matches!(**consequence, Statement::Block(..)));
+        assert_eq!(consequence.len(), 3);
+
+        let alternative = expression.alternative().unwrap().clone().unwrap();
+        assert!(matches!(*alternative, Statement::Block(..)));
+        assert_eq!(alternative.len(), 3);
     }
 }
