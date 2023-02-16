@@ -77,6 +77,7 @@ impl Parser {
         prefix_fns.insert(TokenType::Int, Self::parse_integer_literal);
         prefix_fns.insert(TokenType::Bang, Self::parse_prefix_expression);
         prefix_fns.insert(TokenType::Minus, Self::parse_prefix_expression);
+        prefix_fns.insert(TokenType::Lparen, Self::parse_grouped_expression);
 
         prefix_fns
     }
@@ -377,6 +378,28 @@ impl Parser {
         Expression::Prefix(current_token, literal, Box::new(right))
     }
 
+    /// This is only called from parse_expression.
+    fn parse_grouped_expression(&mut self) -> Expression {
+        assert!(self.cur_tokentype_is(TokenType::Lparen));
+
+        // We encountered a parenthesis, so let's go right ahead.
+        self.next_token();
+
+        /*
+         *  We simply continues parsing with Precedence set to lowest,
+         *  which means we ignore what the Precedence was of the previous operator.
+         */
+        let exp = self
+            .parse_expression(Precedence::LOWEST)
+            .expect("Failed to parse Expression after Left Parenthesis");
+
+        if self.expect_peek(TokenType::Rparen) {
+            exp
+        } else {
+            panic!("Left Parethesis never closed with Right Parenthesis.")
+        }
+    }
+
     fn parse_infix_expression(&mut self, left: Expression) -> Expression {
         assert!(
             self.cur_tokentype_is(TokenType::Plus)
@@ -402,7 +425,7 @@ impl Parser {
         /*
          * Whatever comes out of here will be set to the right child node of an Infix expression.
          *
-         * The important bit here, is that for this parse_expression the current token will be
+         * The important bit here, is that for this parse_expression call the current token will be
          * something like an identifier, while the precedence will be that of the previous infix operator.
          * This allows the function to compare the Precedence of the previous operator with the next ones,
          * which determines which operator get to keep the current token.

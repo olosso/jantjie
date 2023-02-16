@@ -420,10 +420,22 @@ mod parser_tests {
             PrecedenceTest::new("1*1<10+1", "((1 * 1) < (10 + 1))"),
             PrecedenceTest::new("true == false == true", "((true == false) == true)"),
             PrecedenceTest::new("3 <    5 == true", "((3 < 5) == true)"),
+            PrecedenceTest::new("3 <    5 == true", "((3 < 5) == true)"),
+            // Parenthesis
+            PrecedenceTest::new("1 + (2 + 3) + 4", "((1 + (2 + 3)) + 4)"),
+            PrecedenceTest::new("1 + (2 + 3) * 4", "(1 + ((2 + 3) * 4))"),
+            PrecedenceTest::new("-(1 + 1)", "(-(1 + 1))"),
         ];
 
         for test in tests.into_iter() {
             test.test();
         }
+    }
+
+    #[test]
+    #[should_panic(expected = "Left Parethesis never closed")]
+    fn test_parenthesis_panic() {
+        PrecedenceTest::new("-(1 + 1", "(-(1 + 1))").test();
+        PrecedenceTest::new("1 + (2 + 3 * 4", "(1 + ((2 + 3) * 4))");
     }
 }
