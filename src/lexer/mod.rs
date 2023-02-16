@@ -153,10 +153,10 @@ impl Lexer {
                 }
             }
             ';' => Token::new(TokenType::Semicolon, self.ch.to_string()),
-            '(' => Token::new(TokenType::Lparen, self.ch.to_string()),
-            ')' => Token::new(TokenType::Rparen, self.ch.to_string()),
-            '{' => Token::new(TokenType::Lbrace, self.ch.to_string()),
-            '}' => Token::new(TokenType::Rbrace, self.ch.to_string()),
+            '(' => Token::new(TokenType::LParen, self.ch.to_string()),
+            ')' => Token::new(TokenType::RParen, self.ch.to_string()),
+            '{' => Token::new(TokenType::LBrace, self.ch.to_string()),
+            '}' => Token::new(TokenType::RBrace, self.ch.to_string()),
             ',' => Token::new(TokenType::Comma, self.ch.to_string()),
             '+' => Token::new(TokenType::Plus, self.ch.to_string()),
             '-' => Token::new(TokenType::Minus, self.ch.to_string()),
@@ -265,10 +265,10 @@ mod token_tests {
         let expected = vec![
             TokenType::Assign,
             TokenType::Plus,
-            TokenType::Lparen,
-            TokenType::Rparen,
-            TokenType::Lbrace,
-            TokenType::Rbrace,
+            TokenType::LParen,
+            TokenType::RParen,
+            TokenType::LBrace,
+            TokenType::RBrace,
             TokenType::Comma,
             TokenType::Semicolon,
             TokenType::EOF,
@@ -366,7 +366,7 @@ let result = add(five, ten);";
                 literal: "func".to_string(),
             },
             Token {
-                token_type: TokenType::Lparen,
+                token_type: TokenType::LParen,
                 literal: "(".to_string(),
             },
             Token {
@@ -382,11 +382,11 @@ let result = add(five, ten);";
                 literal: "y".to_string(),
             },
             Token {
-                token_type: TokenType::Rparen,
+                token_type: TokenType::RParen,
                 literal: ")".to_string(),
             },
             Token {
-                token_type: TokenType::Lbrace,
+                token_type: TokenType::LBrace,
                 literal: "{".to_string(),
             },
             Token {
@@ -406,7 +406,7 @@ let result = add(five, ten);";
                 literal: ";".to_string(),
             },
             Token {
-                token_type: TokenType::Rbrace,
+                token_type: TokenType::RBrace,
                 literal: "}".to_string(),
             },
             Token {
@@ -426,7 +426,7 @@ let result = add(five, ten);";
                 literal: "add".to_string(),
             },
             Token {
-                token_type: TokenType::Lparen,
+                token_type: TokenType::LParen,
                 literal: "(".to_string(),
             },
             Token {
@@ -442,7 +442,7 @@ let result = add(five, ten);";
                 literal: "ten".to_string(),
             },
             Token {
-                token_type: TokenType::Rparen,
+                token_type: TokenType::RParen,
                 literal: ")".to_string(),
             },
             Token {
@@ -642,7 +642,7 @@ return 2
                 literal: "if".to_string(),
             },
             Token {
-                token_type: TokenType::Lparen,
+                token_type: TokenType::LParen,
                 literal: "(".to_string(),
             },
             Token {
@@ -658,11 +658,11 @@ return 2
                 literal: "true".to_string(),
             },
             Token {
-                token_type: TokenType::Rparen,
+                token_type: TokenType::RParen,
                 literal: ")".to_string(),
             },
             Token {
-                token_type: TokenType::Lbrace,
+                token_type: TokenType::LBrace,
                 literal: "{".to_string(),
             },
             Token {
@@ -674,7 +674,7 @@ return 2
                 literal: "1".to_string(),
             },
             Token {
-                token_type: TokenType::Rbrace,
+                token_type: TokenType::RBrace,
                 literal: "}".to_string(),
             },
             Token {
@@ -682,7 +682,7 @@ return 2
                 literal: "else".to_string(),
             },
             Token {
-                token_type: TokenType::Lbrace,
+                token_type: TokenType::LBrace,
                 literal: "{".to_string(),
             },
             Token {
@@ -694,7 +694,7 @@ return 2
                 literal: "2".to_string(),
             },
             Token {
-                token_type: TokenType::Rbrace,
+                token_type: TokenType::RBrace,
                 literal: "}".to_string(),
             },
             Token {

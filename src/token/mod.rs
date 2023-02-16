@@ -28,10 +28,10 @@ pub enum TokenType {
     Comma,
     Semicolon,
 
-    Lparen,
-    Rparen,
-    Lbrace,
-    Rbrace,
+    LParen,
+    RParen,
+    LBrace,
+    RBrace,
 
     // Keywords
     Function,
@@ -71,10 +71,10 @@ impl TokenType {
             TokenType::Comma => ",",
             TokenType::Semicolon => ";",
 
-            TokenType::Lparen => "(",
-            TokenType::Rparen => ")",
-            TokenType::Lbrace => "{",
-            TokenType::Rbrace => "}",
+            TokenType::LParen => "(",
+            TokenType::RParen => ")",
+            TokenType::LBrace => "{",
+            TokenType::RBrace => "}",
 
             TokenType::Function => "FUNCTION",
             TokenType::Let => "LET",
