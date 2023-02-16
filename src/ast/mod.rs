@@ -17,6 +17,7 @@ type Right = Box<Expression>;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expression {
     Placeholder,                         // For initialization and stuff
+    Bool(Token, bool),                   // true,  Token = Token {True, "true"}
     IntegerLiteral(Token, i32),          // 42,    Token = Token {Int, 42}
     Identifier(Token, String),           // foo,   Token = Token {Ident, "foo"}
     Prefix(Token, Operator, Right),      // !true, Token = Token {Bang, "!"}
@@ -55,12 +56,21 @@ impl Expression {
             None
         }
     }
+
+    pub fn buul(&self) -> Option<bool> {
+        if let Expression::Bool(_, b) = self {
+            Some(*b)
+        } else {
+            None
+        }
+    }
 }
 
 impl Node for Expression {
     fn to_string(&self) -> String {
         match self {
-            Expression::Identifier(t, _) => t.literal.clone(),
+            Expression::Bool(t, _) => t.literal.clone(),
+            Expression::Identifier(_, s) => s.to_string(),
             Expression::IntegerLiteral(t, _) => t.literal.clone(),
             Expression::Prefix(_, o, r) => {
                 format!("({}{})", o, r.to_string())
@@ -74,6 +84,7 @@ impl Node for Expression {
 
     fn token_literal(&self) -> String {
         match self {
+            Expression::Bool(t, _) => t.literal.clone(),
             Expression::Identifier(t, ..) => t.literal.clone(),
             Expression::IntegerLiteral(t, ..) => t.literal.clone(),
             Expression::Prefix(t, ..) => t.literal.clone(),

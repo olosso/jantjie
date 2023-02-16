@@ -72,6 +72,8 @@ impl Parser {
             TokenType::Ident,
             Self::parse_identifier as for<'a> fn(&'a mut Self) -> Expression,
         );
+        prefix_fns.insert(TokenType::True, Self::parse_bool);
+        prefix_fns.insert(TokenType::False, Self::parse_bool);
         prefix_fns.insert(TokenType::Int, Self::parse_integer_literal);
         prefix_fns.insert(TokenType::Bang, Self::parse_prefix_expression);
         prefix_fns.insert(TokenType::Minus, Self::parse_prefix_expression);
@@ -212,6 +214,8 @@ impl Parser {
                 || self.cur_tokentype_is(TokenType::Ident)
                 || self.cur_tokentype_is(TokenType::Minus)
                 || self.cur_tokentype_is(TokenType::Bang)
+                || self.cur_tokentype_is(TokenType::True)
+                || self.cur_tokentype_is(TokenType::False)
         );
 
         let token = self.current_token.clone();
@@ -306,6 +310,17 @@ impl Parser {
         }
 
         Some(left)
+    }
+
+    /// Token { ident, "foo" } => Identifier { Token { ident, "foo" }, "foo" }
+    /// Note that this is a prefix function -> It can be a leaf in the AST.
+    fn parse_bool(&mut self) -> Expression {
+        assert!(self.cur_tokentype_is(TokenType::True) || self.cur_tokentype_is(TokenType::False));
+
+        Expression::Bool(
+            self.current_token.clone(),
+            self.cur_tokentype_is(TokenType::True),
+        )
     }
 
     /// Token { ident, "foo" } => Identifier { Token { ident, "foo" }, "foo" }
