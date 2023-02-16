@@ -78,118 +78,134 @@ mod parser_tests {
         );
     }
 
+    /*
+     * Testing Expressions with a single LiteralExpression.
+     */
+    struct LiteralExpressionTest<'a, T> {
+        exp: &'a Expression,
+        expected: T,
+    }
+
+    impl<'a, T> LiteralExpressionTest<'a, T> {
+        fn new(exp: &'a Expression, expected: T) -> Self {
+            LiteralExpressionTest { exp, expected }
+        }
+    }
+
+    impl<'a> LiteralExpressionTest<'a, i32> {
+        fn test(&self) {
+            test_integer_literal(self.exp, self.expected)
+        }
+    }
+
+    impl<'a> LiteralExpressionTest<'a, String> {
+        fn test(&self) {
+            test_identifier(self.exp, &self.expected)
+        }
+    }
+
+    impl<'a> LiteralExpressionTest<'a, bool> {
+        fn test(&self) {
+            test_bool(self.exp, self.expected)
+        }
+    }
+
     #[test]
-    fn test_parse_single_token_expressions() {
-        case_parse_identifier_expression(
-            "foobar;",
-            Statement::Expr(
-                Token {
-                    token_type: TokenType::Ident,
-                    literal: String::from("foobar"),
-                },
-                Expression::Identifier(
-                    Token {
-                        token_type: TokenType::Ident,
-                        literal: String::from("foobar"),
-                    },
-                    "foobar".to_string(),
-                ),
-            ),
-            "Expected IdentifierToken. Got None.",
-        );
+    fn test_literal_expression() {
+        LiteralExpressionTest::new(
+            &Expression::IntegerLiteral(Token::new(TokenType::Int, "10".to_string()), 10),
+            10,
+        )
+        .test();
 
-        case_parse_integer_literal_expression(
-            "42;",
-            Statement::Expr(
-                Token {
-                    token_type: TokenType::Int,
-                    literal: String::from("42"),
-                },
-                Expression::IntegerLiteral(
-                    Token {
-                        token_type: TokenType::Int,
-                        literal: String::from("42"),
-                    },
-                    42,
-                ),
+        LiteralExpressionTest::new(
+            &Expression::Identifier(
+                Token::new(TokenType::Ident, "foo".to_string()),
+                "foo".to_string(),
             ),
-            "Expected IntegerLiteral. Got None.",
-        );
+            "foo".to_string(),
+        )
+        .test();
 
-        case_parse_prefix_expression(
-            "-42;",
-            Statement::Expr(
-                Token {
-                    token_type: TokenType::Minus,
-                    literal: String::from("-"),
-                },
-                Expression::Prefix(
-                    Token {
-                        token_type: TokenType::Minus,
-                        literal: String::from("-"),
-                    },
-                    String::from("-"),
-                    Box::new(Expression::IntegerLiteral(
-                        Token {
-                            token_type: TokenType::Int,
-                            literal: String::from("42"),
-                        },
-                        -42,
-                    )),
-                ),
-            ),
-            "Expected IntegerLiteral. Got None.",
-        );
+        LiteralExpressionTest::new(
+            &Expression::Bool(Token::new(TokenType::True, "true".to_string()), true),
+            true,
+        )
+        .test();
+
+        LiteralExpressionTest::new(
+            &Expression::Bool(Token::new(TokenType::True, "false".to_string()), false),
+            false,
+        )
+        .test();
     }
 
-    fn parse_single_expression(source_code: &str, statement: &Statement) -> Statement {
-        let program = init(source_code);
-        let n_parsed_statements = program.statements.len();
+    fn test_integer_literal(exp: &Expression, value: i32) {
+        assert!(
+            matches!(exp, Expression::IntegerLiteral(..)),
+            "Expression not IntegerLiteral, got {exp:?}",
+        );
 
         assert_eq!(
-            n_parsed_statements, 1,
-            "Expected program to have a single statement, but received {n_parsed_statements}\n Source code: {source_code}",
+            exp.int().unwrap(),
+            value,
+            "IntegerLiteral doesn't have value {value}, got {:?}",
+            exp.int().unwrap()
         );
 
-        let parsed = program.statements[0].clone();
-
-        assert_eq!(statement.literal(), parsed.literal());
         assert_eq!(
-            parsed.token().unwrap().token_type,
-            statement.token().unwrap().token_type
+            exp.token_literal(),
+            value.to_string(),
+            "IntegerLiteral doesn't have literal {value}, got {:?}",
+            exp.token_literal()
+        );
+    }
+
+    fn test_identifier(exp: &Expression, value: &String) {
+        assert!(
+            matches!(exp, Expression::Identifier(..)),
+            "Expression not Identifier, got {exp:?}",
         );
 
-        parsed
+        assert_eq!(
+            &exp.to_string(),
+            value,
+            "Identifier doesn't have value {value}, got {:?}",
+            &exp.to_string()
+        );
+
+        assert_eq!(
+            &exp.token_literal(),
+            value,
+            "Identifier doesn't have literal {value}, got {:?}",
+            &exp.token_literal()
+        );
     }
 
-    fn case_parse_identifier_expression(source_code: &str, statement: Statement, error_msg: &str) {
-        let parsed = parse_single_expression(source_code, &statement);
+    fn test_bool(exp: &Expression, value: bool) {
+        assert!(
+            matches!(exp, Expression::Bool(..)),
+            "Expression not Bool, got {exp:?}",
+        );
 
-        let parsed_expr = parsed.expr();
-        let input_expr = statement.expr();
-        assert!(matches!(parsed_expr, Expression::Identifier(_, _)))
+        assert_eq!(
+            &exp.buul().unwrap(),
+            &value,
+            "Bool doesn't have value {value}, got {:?}",
+            &exp.buul().unwrap()
+        );
+
+        assert_eq!(
+            &exp.token_literal(),
+            &value.to_string(),
+            "Identifier doesn't have literal {value}, got {:?}",
+            &exp.token_literal()
+        );
     }
 
-    fn case_parse_integer_literal_expression(
-        source_code: &str,
-        statement: Statement,
-        error_msg: &str,
-    ) {
-        let parsed = parse_single_expression(source_code, &statement);
-
-        let parsed_expr = parsed.expr();
-        let input_expr = statement.expr();
-        assert!(matches!(parsed_expr, Expression::IntegerLiteral(_, _)))
-    }
-
-    fn case_parse_prefix_expression(source_code: &str, statement: Statement, error_msg: &str) {
-        let parsed = parse_single_expression(source_code, &statement);
-
-        let parsed_expr = parsed.expr();
-        let input_expr = statement.expr();
-        assert!(matches!(parsed_expr, Expression::Prefix(_, _, _)))
-    }
-
+    /*
+     * Testing Expressions a single InfixExpression.
+     */
     struct InfixTest<L, R> {
         input: String,
         left: L,
@@ -369,155 +385,45 @@ mod parser_tests {
         ));
     }
 
-    #[test]
-    fn test_longer_infix_operations_2() {
-        let program = init("-5+5+5");
-        assert_eq!(program.to_string(), "(((-5) + 5) + 5)")
+    /*
+     * Testing Precedence parsing.
+     */
+    struct PrecedenceTest<'a> {
+        input: &'a str,
+        output: &'a str,
     }
 
-    #[test]
-    fn test_longer_infix_operations_3() {
-        let program = init("-1 + 2 * 3");
-        assert!(matches!(
-            *program.statements[0].expr(),
-            Expression::Infix(_, _, _, _)
-        ));
-    }
-
-    #[test]
-    fn test_longer_let_with_expressions() {
-        let mut program = init("let x = -5+5+5;");
-        assert_eq!(program.to_string(), "let x = (((-5) + 5) + 5);");
-    }
-
-    #[test]
-    fn test_unnecessarily_complicated_expression() {
-        let mut program = init("3 + 4 * 5 == 3 * 1 + 4 * 5");
-        assert_eq!(
-            program.to_string(),
-            "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))"
-        );
-    }
-
-    fn test_integer_literal(exp: &Expression, value: i32) {
-        assert!(
-            matches!(exp, Expression::IntegerLiteral(..)),
-            "Expression not IntegerLiteral, got {exp:?}",
-        );
-
-        assert_eq!(
-            exp.int().unwrap(),
-            value,
-            "IntegerLiteral doesn't have value {value}, got {:?}",
-            exp.int().unwrap()
-        );
-
-        assert_eq!(
-            exp.token_literal(),
-            value.to_string(),
-            "IntegerLiteral doesn't have literal {value}, got {:?}",
-            exp.token_literal()
-        );
-    }
-
-    fn test_identifier(exp: &Expression, value: &String) {
-        assert!(
-            matches!(exp, Expression::Identifier(..)),
-            "Expression not Identifier, got {exp:?}",
-        );
-
-        assert_eq!(
-            &exp.to_string(),
-            value,
-            "Identifier doesn't have value {value}, got {:?}",
-            &exp.to_string()
-        );
-
-        assert_eq!(
-            &exp.token_literal(),
-            value,
-            "Identifier doesn't have literal {value}, got {:?}",
-            &exp.token_literal()
-        );
-    }
-
-    fn test_bool(exp: &Expression, value: bool) {
-        assert!(
-            matches!(exp, Expression::Bool(..)),
-            "Expression not Bool, got {exp:?}",
-        );
-
-        assert_eq!(
-            &exp.buul().unwrap(),
-            &value,
-            "Bool doesn't have value {value}, got {:?}",
-            &exp.buul().unwrap()
-        );
-
-        assert_eq!(
-            &exp.token_literal(),
-            &value.to_string(),
-            "Identifier doesn't have literal {value}, got {:?}",
-            &exp.token_literal()
-        );
-    }
-
-    struct LiteralExpressionTest<'a, T> {
-        exp: &'a Expression,
-        expected: T,
-    }
-
-    impl<'a, T> LiteralExpressionTest<'a, T> {
-        fn new(exp: &'a Expression, expected: T) -> Self {
-            LiteralExpressionTest { exp, expected }
+    impl<'a> PrecedenceTest<'a> {
+        fn new(input: &'a str, output: &'a str) -> Self {
+            PrecedenceTest { input, output }
         }
-    }
 
-    impl<'a> LiteralExpressionTest<'a, i32> {
         fn test(&self) {
-            test_integer_literal(self.exp, self.expected)
-        }
-    }
-
-    impl<'a> LiteralExpressionTest<'a, String> {
-        fn test(&self) {
-            test_identifier(self.exp, &self.expected)
-        }
-    }
-
-    impl<'a> LiteralExpressionTest<'a, bool> {
-        fn test(&self) {
-            test_bool(self.exp, self.expected)
+            let mut program = init(self.input);
+            assert_eq!(program.to_string(), self.output);
         }
     }
 
     #[test]
-    fn test_literal_expression() {
-        LiteralExpressionTest::new(
-            &Expression::IntegerLiteral(Token::new(TokenType::Int, "10".to_string()), 10),
-            10,
-        )
-        .test();
-
-        LiteralExpressionTest::new(
-            &Expression::Identifier(
-                Token::new(TokenType::Ident, "foo".to_string()),
-                "foo".to_string(),
+    fn test_precedence_parsing() {
+        let tests = vec![
+            PrecedenceTest::new("1+1+1", "((1 + 1) + 1)"),
+            PrecedenceTest::new("1+1*1", "(1 + (1 * 1))"),
+            PrecedenceTest::new("1+1*1/1", "(1 + ((1 * 1) / 1))"),
+            PrecedenceTest::new("1+1*-1/1", "(1 + ((1 * (-1)) / 1))"),
+            PrecedenceTest::new("1+-1*-1/1", "(1 + (((-1) * (-1)) / 1))"),
+            PrecedenceTest::new(
+                "3 + 4 * 5 == 3 * 1 + 4 * 5",
+                "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))",
             ),
-            "foo".to_string(),
-        )
-        .test();
+            PrecedenceTest::new("1*1<10", "((1 * 1) < 10)"),
+            PrecedenceTest::new("1*1<10+1", "((1 * 1) < (10 + 1))"),
+            PrecedenceTest::new("true == false == true", "((true == false) == true)"),
+            PrecedenceTest::new("3 <    5 == true", "((3 < 5) == true)"),
+        ];
 
-        LiteralExpressionTest::new(
-            &Expression::Bool(Token::new(TokenType::True, "true".to_string()), true),
-            true,
-        )
-        .test();
-
-        LiteralExpressionTest::new(
-            &Expression::Bool(Token::new(TokenType::True, "false".to_string()), false),
-            false,
-        )
-        .test();
+        for test in tests.into_iter() {
+            test.test();
+        }
     }
 }
