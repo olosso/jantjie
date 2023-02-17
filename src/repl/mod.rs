@@ -1,4 +1,6 @@
+use crate::ast::*;
 use crate::lexer::*;
+use crate::parser::*;
 use std::io::{self, Write};
 
 pub struct REPL {}
@@ -16,8 +18,10 @@ impl REPL {
                 break;
             }
             let mut lexer = Lexer::new(buffer);
-            let tokens = lexer.tokens();
-            dbg!(&tokens);
+            // let tokens = lexer.tokens();
+            let mut parser = Parser::new(lexer);
+            let program = parser.parse_program();
+            dbg!(program.to_string());
         }
 
         println!("Farewell!");

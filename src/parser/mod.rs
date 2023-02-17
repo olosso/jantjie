@@ -30,7 +30,7 @@ pub enum Precedence {
     CALL,        // foo(X)
 }
 
-struct Parser {
+pub struct Parser {
     lexer: Lexer,
     current_token: Token,
     peek_token: Token,
@@ -41,7 +41,7 @@ struct Parser {
 impl Parser {
     /// Parser::new
     /// Create a new parser given a lexer.
-    fn new(lexer: Lexer) -> Self {
+    pub fn new(lexer: Lexer) -> Self {
         let mut parser = Parser {
             lexer,
             current_token: Token {
@@ -111,7 +111,7 @@ impl Parser {
 
     /// Parser::parse_program
     /// Goes through tokens found by the lexer and trys to find the statements.
-    fn parse_program(&mut self) -> Program {
+    pub fn parse_program(&mut self) -> Program {
         let mut program = Program { statements: vec![] };
 
         /*
@@ -189,13 +189,7 @@ impl Parser {
         };
         // current_token is Assign
         //
-        if !(self.expect_peek(TokenType::Ident)
-            || self.expect_peek(TokenType::Int)
-            || self.expect_peek(TokenType::Minus)
-            || self.expect_peek(TokenType::Bang))
-        {
-            panic!("Identifier not followed by something other than expression.")
-        };
+        self.next_token();
 
         let expression = self
             .parse_expression(Precedence::LOWEST)
