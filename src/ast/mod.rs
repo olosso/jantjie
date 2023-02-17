@@ -1,3 +1,4 @@
+use crate::object::Object;
 use crate::token::Token;
 
 /// Node
@@ -6,6 +7,9 @@ pub trait Node {
     fn node_type(&self) -> String;
     fn token_literal(&self) -> String {
         self.node_type()
+    }
+    fn eval(&self) -> Object {
+        Object::Null
     }
 }
 
@@ -221,6 +225,15 @@ impl Node for Expression {
     fn node_type(&self) -> String {
         format!("Expression node: {self:?}")
     }
+
+    fn eval(&self) -> Object {
+        match &self {
+            Expression::IntegerLiteral(_, i) => Object::Integer(*i),
+            _ => todo!(
+                "The Expression your trying to evaluate doesn't have an evaluation function yet!"
+            ),
+        }
+    }
 }
 
 /// Statement
@@ -250,12 +263,12 @@ impl Statement {
         }
     }
 
-    pub fn expr(&self) -> &Expression {
+    pub fn expr(&self) -> Option<&Expression> {
         match self {
-            Statement::Let(.., e) => e,
-            Statement::Return(.., e) => e,
-            Statement::Expr(.., e) => e,
-            Statement::Block(..) => todo!("Not sure what to do here."),
+            Statement::Let(.., e) => Some(e),
+            Statement::Return(.., e) => Some(e),
+            Statement::Expr(.., e) => Some(e),
+            Statement::Block(..) => None,
         }
     }
 
@@ -312,6 +325,13 @@ impl Node for Statement {
     fn node_type(&self) -> String {
         format!("Statement node: {self:?}")
     }
+
+    fn eval(&self) -> Object {
+        match &self {
+            Statement::Block(_, _) => self.eval(),
+            _ => self.expr().unwrap().eval(), // This unwrap is safe, because these statements must contains Expressions
+        }
+    }
 }
 
 /// Program
@@ -339,6 +359,14 @@ impl Node for Program {
 
     fn node_type(&self) -> String {
         "Program node".to_string()
+    }
+
+    fn eval(&self) -> Object {
+        let mut result = Object::Null;
+        for statement in self.statements.iter() {
+            result = statement.eval();
+        }
+        result
     }
 }
 

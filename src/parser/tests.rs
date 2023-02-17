@@ -71,7 +71,10 @@ mod parser_tests {
         assert!(matches!(parsed, Statement::Return(_, _)));
         assert_eq!(parsed.token().unwrap().literal, "return");
         assert_eq!(parsed.token().unwrap().token_type, TokenType::Return);
-        assert!(matches!(*parsed.expr(), Expression::IntegerLiteral(..)));
+        assert!(matches!(
+            *parsed.expr().unwrap(),
+            Expression::IntegerLiteral(..)
+        ));
     }
 
     /*
@@ -226,20 +229,29 @@ mod parser_tests {
 
             // Has the program correctly parsed it as a InfixExpression?
             assert!(matches!(
-                program.statements[0].expr(),
+                program.statements[0].expr().unwrap(),
                 Expression::Infix(_, _, _, _)
             ));
 
             // Does the program only contain 1 statement?
             assert_eq!(program.statements.len(), 1);
 
-            LiteralExpressionTest::new(program.statements[0].expr().left().unwrap(), self.left)
-                .test();
+            LiteralExpressionTest::new(
+                program.statements[0].expr().unwrap().left().unwrap(),
+                self.left,
+            )
+            .test();
             // Has the Infix operator been parsed correctly?
-            assert_eq!(program.statements[0].expr().op().unwrap(), self.operator);
+            assert_eq!(
+                program.statements[0].expr().unwrap().op().unwrap(),
+                self.operator
+            );
 
-            LiteralExpressionTest::new(program.statements[0].expr().right().unwrap(), self.right)
-                .test();
+            LiteralExpressionTest::new(
+                program.statements[0].expr().unwrap().right().unwrap(),
+                self.right,
+            )
+            .test();
         }
     }
 
@@ -249,7 +261,7 @@ mod parser_tests {
 
             // Has the program correctly parsed it as a InfixExpression?
             assert!(matches!(
-                program.statements[0].expr(),
+                program.statements[0].expr().unwrap(),
                 Expression::Infix(_, _, _, _)
             ));
 
@@ -257,16 +269,19 @@ mod parser_tests {
             assert_eq!(program.statements.len(), 1);
 
             LiteralExpressionTest::new(
-                program.statements[0].expr().left().unwrap(),
+                program.statements[0].expr().unwrap().left().unwrap(),
                 self.left.to_owned(),
             )
             .test();
 
             // Has the Infix operator been parsed correctly?
-            assert_eq!(program.statements[0].expr().op().unwrap(), self.operator);
+            assert_eq!(
+                program.statements[0].expr().unwrap().op().unwrap(),
+                self.operator
+            );
 
             LiteralExpressionTest::new(
-                program.statements[0].expr().right().unwrap(),
+                program.statements[0].expr().unwrap().right().unwrap(),
                 self.right.to_owned(),
             )
             .test();
@@ -279,7 +294,7 @@ mod parser_tests {
 
             // Has the program correctly parsed it as a InfixExpression?
             assert!(matches!(
-                program.statements[0].expr(),
+                program.statements[0].expr().unwrap(),
                 Expression::Infix(_, _, _, _)
             ));
 
@@ -287,16 +302,19 @@ mod parser_tests {
             assert_eq!(program.statements.len(), 1);
 
             LiteralExpressionTest::new(
-                program.statements[0].expr().left().unwrap(),
+                program.statements[0].expr().unwrap().left().unwrap(),
                 self.left.to_owned(),
             )
             .test();
 
             // Has the Infix operator been parsed correctly?
-            assert_eq!(program.statements[0].expr().op().unwrap(), self.operator);
+            assert_eq!(
+                program.statements[0].expr().unwrap().op().unwrap(),
+                self.operator
+            );
 
             LiteralExpressionTest::new(
-                program.statements[0].expr().right().unwrap(),
+                program.statements[0].expr().unwrap().right().unwrap(),
                 self.right.to_owned(),
             )
             .test();
@@ -355,20 +373,27 @@ mod parser_tests {
         // Has the program correctly parsed it as a ExpressionStatement?
         assert!(matches!(program.statements[0], Statement::Expr(_, _)));
         assert!(matches!(
-            program.statements[0].expr(),
+            program.statements[0].expr().unwrap(),
             Expression::Infix(..)
         ));
         assert!(matches!(
-            **program.statements[0].expr().left().unwrap(),
+            **program.statements[0].expr().unwrap().left().unwrap(),
             Expression::Infix(..)
         ));
         assert!(matches!(
-            **program.statements[0].expr().left().unwrap().left().unwrap(),
+            **program.statements[0]
+                .expr()
+                .unwrap()
+                .left()
+                .unwrap()
+                .left()
+                .unwrap(),
             Expression::IntegerLiteral(..)
         ));
         assert!(matches!(
             **program.statements[0]
                 .expr()
+                .unwrap()
                 .left()
                 .unwrap()
                 .right()
@@ -376,7 +401,7 @@ mod parser_tests {
             Expression::IntegerLiteral(..)
         ));
         assert!(matches!(
-            **program.statements[0].expr().right().unwrap(),
+            **program.statements[0].expr().unwrap().right().unwrap(),
             Expression::IntegerLiteral(..)
         ));
     }
@@ -449,7 +474,7 @@ mod parser_tests {
     #[test]
     fn test_if_expression() {
         let program = init("if (a<b) { a }");
-        let expression = &program.statements[0].expr();
+        let expression = &program.statements[0].expr().unwrap();
 
         assert!(matches!(expression, Expression::If(..)));
 
@@ -469,7 +494,7 @@ mod parser_tests {
     fn test_if_else_expression() {
         let program = init("if (a<b) { a } else { b }");
 
-        let expression = &program.statements[0].expr();
+        let expression = &program.statements[0].expr().unwrap();
 
         assert!(matches!(expression, Expression::If(..)));
 
@@ -492,7 +517,7 @@ mod parser_tests {
     fn test_if_else_expression2() {
         let program = init("if (a<b) { a; b; c } else { b; b; c }");
 
-        let expression = &program.statements[0].expr();
+        let expression = &program.statements[0].expr().unwrap();
 
         assert!(matches!(expression, Expression::If(..)));
 
@@ -538,7 +563,7 @@ mod parser_tests {
         for case in cases {
             let program = init(&case.input);
             dbg!("{}", program.to_string());
-            let expr = &program.statements[0].expr();
+            let expr = &program.statements[0].expr().unwrap();
             let params = expr.params().unwrap();
             let body = expr.body().unwrap();
 
@@ -600,7 +625,7 @@ mod parser_tests {
 
         for case in cases {
             let program = init(&case.input);
-            let expr = &program.statements[0].expr();
+            let expr = &program.statements[0].expr().unwrap();
             let name = expr.name().unwrap();
             let args = expr.args().unwrap();
 

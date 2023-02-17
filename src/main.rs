@@ -2,6 +2,7 @@
 #![allow(dead_code, unused)]
 
 mod ast;
+mod evaluator;
 mod lexer;
 mod object;
 mod parser;
