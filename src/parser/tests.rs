@@ -67,7 +67,6 @@ mod parser_tests {
         );
 
         let parsed = &program.statements[1];
-        dbg!(parsed);
 
         assert!(matches!(parsed, Statement::Return(_, _)));
         assert_eq!(parsed.token().unwrap().literal, "return");
@@ -436,6 +435,9 @@ mod parser_tests {
         PrecedenceTest::new("1 + (2 + 3 * 4", "(1 + ((2 + 3) * 4))");
     }
 
+    /*
+     * IfElse tests
+     */
     #[test]
     fn test_if_expression() {
         let program = init("if (a<b) { a }");
@@ -462,6 +464,9 @@ mod parser_tests {
         let expression = &program.statements[0].expr();
 
         assert!(matches!(expression, Expression::If(..)));
+
+        let condition = expression.condition().unwrap();
+        assert!(matches!(**condition, Expression::Infix(..)));
 
         assert_eq!(expression.token_literal(), "if".to_string());
 
@@ -495,5 +500,49 @@ mod parser_tests {
         let alternative = expression.alternative().unwrap().clone().unwrap();
         assert!(matches!(*alternative, Statement::Block(..)));
         assert_eq!(alternative.len(), 3);
+    }
+
+    /*
+     * FunctionExpression tests
+     */
+    struct FuncTest {
+        input: String,
+        params: Vec<String>,
+    }
+
+    impl FuncTest {
+        fn new(input: &str, params: Vec<&str>) -> Self {
+            FuncTest {
+                input: input.to_string(),
+                params: params.iter().map(|x| x.to_string()).collect(),
+            }
+        }
+    }
+
+    #[test]
+    fn test_func_expression() {
+        let cases = vec![
+            FuncTest::new("func() { return 1; }", vec![]),
+            FuncTest::new("func(a) { return a; }", vec!["a"]),
+            FuncTest::new("func(a, b) { return a + b; }", vec!["a", "b"]),
+        ];
+
+        for case in cases {
+            let program = init(&case.input);
+            dbg!("{}", program.to_string());
+            let expr = &program.statements[0].expr();
+            let params = expr.params().unwrap();
+            let body = expr.body().unwrap();
+
+            assert_eq!(program.len(), 1);
+            assert!(matches!(expr, Expression::Func(..)));
+            assert_eq!(params.len(), case.params.len());
+            assert!(params
+                .iter()
+                .zip(case.params)
+                .all(|(a, b)| a.token_literal() == b));
+            assert!(matches!(**body, Statement::Block(..)));
+            assert_eq!(body.len(), 1);
+        }
     }
 }

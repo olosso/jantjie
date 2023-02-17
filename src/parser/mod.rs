@@ -79,6 +79,7 @@ impl Parser {
         prefix_fns.insert(TokenType::Minus, Self::parse_prefix_expression);
         prefix_fns.insert(TokenType::LParen, Self::parse_grouped_expression);
         prefix_fns.insert(TokenType::If, Self::parse_if_expression);
+        prefix_fns.insert(TokenType::Function, Self::parse_func_expression);
 
         prefix_fns
     }
@@ -127,7 +128,8 @@ impl Parser {
         program
     }
 
-    fn parse_block(&mut self) -> Statement {
+    /// Parses BlockStatements found in IfExpressions.
+    fn parse_block_statement(&mut self) -> Statement {
         assert!(self.cur_tokentype_is(TokenType::LBrace));
 
         let lbrace = self.current_token.clone();
@@ -139,7 +141,7 @@ impl Parser {
          * Forwards the execution to a parser function if it finds something interesting.
          * Ends execution when EOF Token is encountered.
          */
-        while !(self.cur_tokentype_is(TokenType::EOF) || self.cur_tokentype_is(TokenType::RBrace)) {
+        while !self.cur_tokentype_is(TokenType::RBrace) {
             let statement = self.parse_statement();
             if let Some(x) = statement {
                 block.push(x);
@@ -149,6 +151,7 @@ impl Parser {
 
         Statement::Block(lbrace, block)
     }
+
     /// Forwards the Parser to the correct statement parsing function based on the current token type.
     /// Let and Return statements are easy to identify: The statement must begin with those keywords.
     /// If neither of those is the case, then the statement is interpreted as a ExpressionStatement.
@@ -211,20 +214,18 @@ impl Parser {
 
         let return_token = self.current_token.clone();
 
-        if !(self.expect_peek(TokenType::Ident)
-            || self.expect_peek(TokenType::Int)
-            || self.expect_peek(TokenType::Minus)
-            || self.expect_peek(TokenType::Bang))
-        {
-            panic!("Identifier not followed by something other than expression.")
+        if self.peek_tokentype_is(TokenType::Semicolon) {
+            panic!("Empty ReturnStatement not allowed.")
         };
+
+        self.next_token();
 
         let expression = self
             .parse_expression(Precedence::LOWEST)
-            .expect("Failed to parse expression in LetStatement.");
+            .expect("Failed to parse expression in ReturnStatement.");
 
         if !self.expect_peek(TokenType::Semicolon) {
-            panic!("LetStatement not finished with semicolon.")
+            panic!("ReturnStatement not finished with semicolon.")
         };
 
         Statement::Return(return_token, expression)
@@ -241,6 +242,7 @@ impl Parser {
                 || self.cur_tokentype_is(TokenType::True)
                 || self.cur_tokentype_is(TokenType::False)
                 || self.cur_tokentype_is(TokenType::If)
+                || self.cur_tokentype_is(TokenType::Function)
         );
 
         let token = self.current_token.clone();
@@ -424,6 +426,7 @@ impl Parser {
         }
     }
 
+    /// Parses both If and IfElse Expressions.
     fn parse_if_expression(&mut self) -> Expression {
         assert!(self.cur_tokentype_is(TokenType::If));
 
@@ -434,32 +437,83 @@ impl Parser {
         };
 
         let lparen = self.current_token.clone();
-
         let condition = self.parse_grouped_expression();
 
         if !self.expect_peek(TokenType::LBrace) {
             panic!("Right Parenthesis not followed by Left Brace in IfExpression.")
         };
 
-        let consequence = self.parse_block();
-
+        let consequence = self.parse_block_statement();
         self.next_token();
 
         let alternative = if (self.cur_tokentype_is(TokenType::Else)) {
             if !self.expect_peek(TokenType::LBrace) {
                 panic!("ElseToken not followed by Left Brace in IfExpression.")
             };
-            Some(Box::new(self.parse_block()))
+            Some(Box::new(self.parse_block_statement()))
         } else {
             None
         };
 
         Expression::If(
             if_token,
-            Box::new(Statement::Expr(lparen, condition)),
+            Box::new(condition),
             Box::new(consequence),
             alternative,
         )
+    }
+
+    fn parse_func_expression(&mut self) -> Expression {
+        assert!(self.cur_tokentype_is(TokenType::Function));
+
+        let func_token = self.current_token.clone();
+
+        if !self.expect_peek(TokenType::LParen) {
+            panic!("FunctionToken not followed by Left Parenthesis.")
+        };
+
+        let params = self.parse_function_parameters();
+        assert!(self.cur_tokentype_is(TokenType::RParen));
+
+        if !self.expect_peek(TokenType::LBrace) {
+            panic!(
+                "Expected LBrace to start function Body, but got {:?}",
+                self.peek_token.token_type
+            )
+        }
+
+        let body = Box::new(self.parse_block_statement());
+
+        Expression::Func(func_token, params, body)
+    }
+
+    fn parse_function_parameters(&mut self) -> Vec<Expression> {
+        assert!(self.cur_tokentype_is(TokenType::LParen));
+
+        let mut params = vec![];
+
+        if self.peek_tokentype_is(TokenType::RParen) {
+            self.next_token();
+            return params;
+        }
+
+        self.next_token();
+        params.push(self.parse_identifier());
+
+        while self.peek_tokentype_is(TokenType::Comma) {
+            self.next_token();
+            self.next_token();
+            params.push(self.parse_identifier());
+        }
+
+        if !self.expect_peek(TokenType::RParen) {
+            panic!(
+                "Expected RParen to close function parameter list, but got {:?}",
+                self.peek_token.token_type
+            )
+        }
+
+        params
     }
 
     fn parse_infix_expression(&mut self, left: Expression) -> Expression {

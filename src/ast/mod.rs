@@ -14,18 +14,28 @@ pub trait Node {
 type Operator = String;
 type Left = Box<Expression>;
 type Right = Box<Expression>;
-type Condition = Box<Statement>;
+type Condition = Box<Expression>;
 type Consequence = Box<Statement>;
 type Alternative = Box<Statement>;
+type Body = Box<Statement>;
+type Params = Vec<Expression>;
 #[derive(Debug, Clone)]
 pub enum Expression {
-    Placeholder,                                            // For initialization and stuff
-    Bool(Token, bool),                                      // true,  Token = Token {True, "true"}
-    IntegerLiteral(Token, i32),                             // 42,    Token = Token {Int, 42}
-    Identifier(Token, String),                              // foo,   Token = Token {Ident, "foo"}
-    Prefix(Token, Operator, Right),                         // !true, Token = Token {Bang, "!"}
+    Bool(Token, bool),                   // true,  Token = Token {True, "true"}
+    IntegerLiteral(Token, i32),          // 42,    Token = Token {Int, 42}
+    Identifier(Token, String),           // foo,   Token = Token {Ident, "foo"}
+    Prefix(Token, Operator, Right),      // !true, Token = Token {Bang, "!"}
     Infix(Token, Left, Operator, Right), // a + b, Token = Token {Plus, "+"}, Operator = "+"
-    If(Token, Condition, Consequence, Option<Alternative>), // if (condition) { consequence } else { alternative }, Token = Token {If, "if"}, Operator = "+"
+    /*
+     * if (condition) { consequence } else { alternative }
+     * Token = Token {If, "if"}
+     */
+    If(Token, Condition, Consequence, Option<Alternative>),
+    /*
+     *  func (identifiers) { body }
+     *  Token = Token { Function, "func" }
+     */
+    Func(Token, Params, Body),
 }
 
 impl Expression {
@@ -98,6 +108,22 @@ impl Expression {
             None
         }
     }
+
+    pub fn params(&self) -> Option<&Params> {
+        if let Expression::Func(_, p, ..) = self {
+            Some(p)
+        } else {
+            None
+        }
+    }
+
+    pub fn body(&self) -> Option<&Body> {
+        if let Expression::Func(_, _, b) = self {
+            Some(b)
+        } else {
+            None
+        }
+    }
 }
 
 impl Node for Expression {
@@ -130,18 +156,30 @@ impl Node for Expression {
                     )
                 }
             }
+            Expression::Func(t, p, b) => {
+                format!(
+                    "{} ({}) {{ {} }}",
+                    t.literal,
+                    p.iter()
+                        .map(|x| x.to_string())
+                        .collect::<Vec<String>>()
+                        .join(", "),
+                    b.to_string()
+                )
+            }
             _ => panic!(),
         }
     }
 
     fn token_literal(&self) -> String {
         match self {
-            Expression::Bool(t, _) => t.literal.clone(),
+            Expression::Bool(t, ..) => t.literal.clone(),
             Expression::Identifier(t, ..) => t.literal.clone(),
             Expression::IntegerLiteral(t, ..) => t.literal.clone(),
             Expression::Prefix(t, ..) => t.literal.clone(),
             Expression::Infix(t, ..) => t.literal.clone(),
             Expression::If(t, ..) => t.literal.clone(),
+            Expression::Func(t, ..) => t.literal.clone(),
             _ => panic!(),
         }
     }
@@ -156,7 +194,7 @@ type Name = Expression;
 #[derive(Debug, Clone)]
 pub enum Statement {
     Let(Token, Name, Expression), // let <identifier> = <expression>; - Token is the Let token
-    Return(Token, Expression),    // return (<expression>); - Token is the Return token
+    Return(Token, Expression),    // return <expression>; - Token is the Return token
     Expr(Token, Expression),      // <expression>(;) - Token is the first Token of the expression.
     Block(Token, Vec<Statement>),
 }
@@ -248,6 +286,12 @@ impl Node for Statement {
 #[derive(Debug)]
 pub struct Program {
     pub statements: Vec<Statement>,
+}
+
+impl Program {
+    pub fn len(&self) -> usize {
+        self.statements.len()
+    }
 }
 
 impl Node for Program {
