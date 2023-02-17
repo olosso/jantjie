@@ -421,6 +421,14 @@ mod parser_tests {
             PrecedenceTest::new("1 + (2 + 3) + 4", "((1 + (2 + 3)) + 4)"),
             PrecedenceTest::new("1 + (2 + 3) * 4", "(1 + ((2 + 3) * 4))"),
             PrecedenceTest::new("-(1 + 1)", "(-(1 + 1))"),
+            PrecedenceTest::new(
+                "add(a, b, 1, 2 * 3, 4 + 5, add(6, 7 * 8))",
+                "add(a, b, 1, (2 * 3), (4 + 5), add(6, (7 * 8)))",
+            ),
+            PrecedenceTest::new(
+                "add(a + b + c * d / f + g)",
+                "add((((a + b) + ((c * d) / f)) + g))",
+            ),
         ];
 
         for test in tests.into_iter() {
@@ -543,6 +551,125 @@ mod parser_tests {
                 .all(|(a, b)| a.token_literal() == b));
             assert!(matches!(**body, Statement::Block(..)));
             assert_eq!(body.len(), 1);
+        }
+    }
+
+    /*
+     * FunctionExpression tests
+     */
+    struct CallTest {
+        input: String,
+        identifier: String,
+        args: Vec<String>,
+    }
+
+    impl CallTest {
+        fn new(input: &str, identifier: &str, args: Vec<&str>) -> Self {
+            CallTest {
+                input: input.to_string(),
+                identifier: identifier.to_string(),
+                args: args.iter().map(|x| x.to_string()).collect(),
+            }
+        }
+    }
+    #[test]
+    fn test_call_expression() {
+        let cases = vec![
+            CallTest::new("foo()", "foo", vec![]),
+            CallTest::new("foo(x)", "foo", vec!["x"]),
+            CallTest::new("foo(x,y)", "foo", vec!["x", "y"]),
+            CallTest::new("func() { return 1; }()", "func() { return 1; }", vec![]),
+            CallTest::new(
+                "func(x) { return x; }(a)",
+                "func(x) { return x; }",
+                vec!["a"],
+            ),
+            CallTest::new(
+                "func(x, y) { return x + y; }(a, b)",
+                "func(x, y) { return (x + y); }",
+                vec!["a", "b"],
+            ),
+            CallTest::new("foo((a+b), (-b))", "foo", vec!["(a + b)", "(-b)"]),
+            CallTest::new(
+                "func(x, y) { return a + b; }((a+b), (-b))",
+                "func(x, y) { return (a + b); }",
+                vec!["(a + b)", "(-b)"],
+            ),
+            CallTest::new("foo(1, 2, foo(3, 4))", "foo", vec!["1", "2", "foo(3, 4)"]),
+        ];
+
+        for case in cases {
+            let program = init(&case.input);
+            let expr = &program.statements[0].expr();
+            let name = expr.name().unwrap();
+            let args = expr.args().unwrap();
+
+            assert_eq!(program.len(), 1);
+            assert!(matches!(expr, Expression::Call(..)));
+            assert_eq!(args.len(), case.args.len());
+            assert!(args.iter().zip(case.args).all(|(a, b)| a.to_string() == b));
+            assert_eq!(name.to_string(), case.identifier);
+        }
+    }
+
+    /*
+     * FunctionExpression tests
+     */
+    struct ProgramTest {
+        input: String,
+        statements: Vec<String>,
+    }
+    impl ProgramTest {
+        fn new(input: &str, statements: Vec<&str>) -> Self {
+            ProgramTest {
+                input: input.to_string(),
+                statements: statements.iter().map(|x| x.to_string()).collect(),
+            }
+        }
+
+        fn str(&self) -> String {
+            self.statements
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<String>>()
+                .join("\n")
+        }
+    }
+
+    #[test]
+    fn test_program_parsing() {
+        let cases = vec![
+            ProgramTest::new(
+                "let x = 1; let y = 2; let z = x + y;",
+                vec!["let x = 1;", "let y = 2;", "let z = (x + y);"],
+            ),
+            ProgramTest::new(
+                "if(a) { b } else { c }; func(a) { return a; }; let z = x + y;",
+                vec![
+                    "if(a) { b } else { c };",
+                    "func(a) { return a; };",
+                    "let z = (x + y);",
+                ],
+            ),
+            ProgramTest::new(
+                "if(a) { b } else { c }; func(a) { 1+1; return a; }; let z = x + y;",
+                vec![
+                    "if(a) { b } else { c };",
+                    "func(a) { (1 + 1); return a; };",
+                    "let z = (x + y);",
+                ],
+            ),
+        ];
+
+        for case in cases {
+            let program = init(&case.input);
+            dbg!(&program.to_string());
+            assert_eq!(program.len(), case.statements.len());
+            // assert!(program
+            //     .statements
+            //     .iter()
+            //     .zip(case.statements)
+            //     .all(|(a, b)| a.to_string() == b));
         }
     }
 }

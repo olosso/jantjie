@@ -19,6 +19,7 @@ type Consequence = Box<Statement>;
 type Alternative = Box<Statement>;
 type Body = Box<Statement>;
 type Params = Vec<Expression>;
+type Arguments = Vec<Expression>;
 #[derive(Debug, Clone)]
 pub enum Expression {
     Bool(Token, bool),                   // true,  Token = Token {True, "true"}
@@ -27,15 +28,20 @@ pub enum Expression {
     Prefix(Token, Operator, Right),      // !true, Token = Token {Bang, "!"}
     Infix(Token, Left, Operator, Right), // a + b, Token = Token {Plus, "+"}, Operator = "+"
     /*
-     * if (condition) { consequence } else { alternative }
+     * if (<expression>) { <statement[]> } else { <statement[]> }
      * Token = Token {If, "if"}
      */
     If(Token, Condition, Consequence, Option<Alternative>),
     /*
-     *  func (identifiers) { body }
+     *  func (<expression(=identifier)[]>) { <statement[]> }
      *  Token = Token { Function, "func" }
      */
     Func(Token, Params, Body),
+    /*
+     *  <identifier> (<expression[]>) { <statement[]> }
+     *  Token = Token { LParen, "(" }
+     */
+    Call(Token, Box<Name>, Arguments),
 }
 
 impl Expression {
@@ -124,6 +130,22 @@ impl Expression {
             None
         }
     }
+
+    pub fn name(&self) -> Option<&Name> {
+        if let Expression::Call(_, n, _) = self {
+            Some(n)
+        } else {
+            None
+        }
+    }
+
+    pub fn args(&self) -> Option<&Arguments> {
+        if let Expression::Call(_, _, a) = self {
+            Some(a)
+        } else {
+            None
+        }
+    }
 }
 
 impl Node for Expression {
@@ -158,13 +180,24 @@ impl Node for Expression {
             }
             Expression::Func(t, p, b) => {
                 format!(
-                    "{} ({}) {{ {} }}",
+                    "{}({}) {{ {} }}",
                     t.literal,
                     p.iter()
                         .map(|x| x.to_string())
                         .collect::<Vec<String>>()
                         .join(", "),
                     b.to_string()
+                )
+            }
+
+            Expression::Call(t, n, a) => {
+                format!(
+                    "{}({})",
+                    n.token_literal(),
+                    a.iter()
+                        .map(|x| x.to_string())
+                        .collect::<Vec<String>>()
+                        .join(", "),
                 )
             }
             _ => panic!(),
@@ -180,6 +213,7 @@ impl Node for Expression {
             Expression::Infix(t, ..) => t.literal.clone(),
             Expression::If(t, ..) => t.literal.clone(),
             Expression::Func(t, ..) => t.literal.clone(),
+            Expression::Call(t, ..) => t.literal.clone(),
             _ => panic!(),
         }
     }
@@ -296,13 +330,11 @@ impl Program {
 
 impl Node for Program {
     fn to_string(&self) -> String {
-        let mut buffer = String::new();
-
-        for statement in self.statements.iter() {
-            buffer.push_str(&statement.to_string());
-        }
-
-        buffer
+        self.statements
+            .iter()
+            .map(|x| x.to_string())
+            .collect::<Vec<String>>()
+            .join("\n")
     }
 
     fn node_type(&self) -> String {

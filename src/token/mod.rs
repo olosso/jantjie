@@ -145,6 +145,7 @@ impl Token {
             TokenType::Minus => Precedence::SUM,
             TokenType::Asterisk => Precedence::PRODUCT,
             TokenType::Slash => Precedence::PRODUCT,
+            TokenType::LParen => Precedence::CALL,
             _ => return None,
         };
 

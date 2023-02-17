@@ -98,6 +98,7 @@ impl Parser {
         infix_fns.insert(TokenType::NotEqual, Self::parse_infix_expression);
         infix_fns.insert(TokenType::GT, Self::parse_infix_expression);
         infix_fns.insert(TokenType::LT, Self::parse_infix_expression);
+        infix_fns.insert(TokenType::LParen, Self::parse_call_expression);
 
         infix_fns
     }
@@ -242,7 +243,9 @@ impl Parser {
                 || self.cur_tokentype_is(TokenType::True)
                 || self.cur_tokentype_is(TokenType::False)
                 || self.cur_tokentype_is(TokenType::If)
-                || self.cur_tokentype_is(TokenType::Function)
+                || self.cur_tokentype_is(TokenType::Function),
+            "First token in Expression was a {:?}, this is not supported.",
+            &self.current_token.token_type
         );
 
         let token = self.current_token.clone();
@@ -525,7 +528,7 @@ impl Parser {
                 || self.cur_tokentype_is(TokenType::Equal)
                 || self.cur_tokentype_is(TokenType::NotEqual)
                 || self.cur_tokentype_is(TokenType::LT)
-                || self.cur_tokentype_is(TokenType::GT)
+                || self.cur_tokentype_is(TokenType::GT),
         );
 
         // Store the current values of token, because next we are going to forward the lexer.
@@ -551,6 +554,52 @@ impl Parser {
             .expect("Failed to parse Right node of InfixExpression");
 
         Expression::Infix(current_token, Box::new(left), operator, Box::new(right))
+    }
+
+    fn parse_call_expression(&mut self, left: Expression) -> Expression {
+        assert!(self.cur_tokentype_is(TokenType::LParen));
+
+        // Store the current values of token, because next we are going to forward the lexer.
+        let lparen = self.current_token.clone();
+
+        let args = self.parse_call_args();
+
+        Expression::Call(lparen, Box::new(left), args)
+    }
+
+    fn parse_call_args(&mut self) -> Vec<Expression> {
+        assert!(self.cur_tokentype_is(TokenType::LParen));
+
+        let mut args = vec![];
+
+        if self.peek_tokentype_is(TokenType::RParen) {
+            self.next_token();
+            return args;
+        }
+
+        self.next_token();
+        args.push(
+            self.parse_expression(Precedence::LOWEST)
+                .expect("Failed to parse Expression in FunctionCall"),
+        );
+
+        while self.peek_tokentype_is(TokenType::Comma) {
+            self.next_token();
+            self.next_token();
+            args.push(
+                self.parse_expression(Precedence::LOWEST)
+                    .expect("Failed to parse Expression in FunctionCall"),
+            );
+        }
+
+        if !self.expect_peek(TokenType::RParen) {
+            panic!(
+                "Expected RParen to close function call, but got {:?}",
+                self.peek_token.token_type
+            )
+        }
+
+        args
     }
 
     // Helper function.
