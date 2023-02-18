@@ -7,7 +7,7 @@ mod parser_tests {
 
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
-        parser.parse_program()
+        parser.parse_program().unwrap()
     }
 
     #[test]
@@ -36,7 +36,7 @@ mod parser_tests {
         let lexer = Lexer::new(malformed_input);
         let mut parser = Parser::new(lexer);
 
-        let program: Program = parser.parse_program();
+        let program: Program = parser.parse_program().unwrap();
     }
 
     #[test]
@@ -47,7 +47,7 @@ mod parser_tests {
         let lexer = Lexer::new(malformed_input);
         let mut parser = Parser::new(lexer);
 
-        let program: Program = parser.parse_program();
+        let program: Program = parser.parse_program().unwrap();
     }
 
     #[test]

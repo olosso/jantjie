@@ -20,9 +20,16 @@ impl REPL {
             }
             let mut lexer = Lexer::new(buffer);
             let mut parser = Parser::new(lexer);
-            let program = parser.parse_program();
-            let value = eval(&program).inspect();
-            dbg!(value);
+            match parser.parse_program() {
+                Ok(program) => {
+                    let value = eval(&program).inspect();
+                    dbg!(value);
+                }
+                Err(e) => {
+                    println!("You got an error: {e}\nBut that's okay 😻");
+                    continue;
+                }
+            }
         }
 
         println!("Farewell!");

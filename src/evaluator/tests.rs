@@ -16,7 +16,7 @@ mod evaluator_tests {
         fn new(input: &str, expected: i32) -> Self {
             let lexer = Lexer::new(input.to_string());
             let mut parser = Parser::new(lexer);
-            let program = parser.parse_program();
+            let program = parser.parse_program().unwrap();
 
             IntegerEvalTest {
                 input: input.to_string(),

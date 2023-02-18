@@ -230,7 +230,7 @@ impl Node for Expression {
         match &self {
             Expression::IntegerLiteral(_, i) => Object::Integer(*i),
             _ => todo!(
-                "The Expression your trying to evaluate doesn't have an evaluation function yet!"
+                "The Expression you're trying to evaluate doesn't have an evaluation function yet!"
             ),
         }
     }
