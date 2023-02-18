@@ -21,12 +21,15 @@ impl REPL {
             let mut lexer = Lexer::new(buffer);
             let mut parser = Parser::new(lexer);
             match parser.parse_program() {
-                Ok(program) => {
-                    let value = eval(&program).inspect();
-                    dbg!(value);
-                }
+                Ok(program) => match eval(&program) {
+                    Ok(value) => println!("{value:?}"),
+                    Err(e) => {
+                        println!("You got an Evaluation error: {e}\nBut that's okay 😸");
+                        continue;
+                    }
+                },
                 Err(e) => {
-                    println!("You got an error: {e}\nBut that's okay 😻");
+                    println!("You got an Parsing error: {e}\nBut that's okay 😻");
                     continue;
                 }
             }

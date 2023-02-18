@@ -29,10 +29,17 @@ impl Object {
         }
     }
 
+    /*
+     * Nulls
+     */
+    const NULL: Object = Object::Null;
     pub fn is_null(&self) -> bool {
         *self == Object::Null
     }
 
+    /*
+     * Integers
+     */
     pub fn as_int(&self) -> Option<i32> {
         match &self {
             Object::Integer(i) => Some(*i),
@@ -40,6 +47,9 @@ impl Object {
         }
     }
 
+    /*
+     * Booleans
+     */
     pub fn as_bool(&self) -> Option<bool> {
         match &self {
             Object::Boolean(b) => Some(*b),

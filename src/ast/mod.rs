@@ -1,5 +1,7 @@
+use crate::evaluator::*;
 use crate::object::Object;
-use crate::token::Token;
+use crate::parser::ParseError;
+use crate::token::{Token, TokenType};
 
 /// Node
 pub trait Node {
@@ -8,8 +10,8 @@ pub trait Node {
     fn token_literal(&self) -> String {
         self.node_type()
     }
-    fn eval(&self) -> Object {
-        Object::Null
+    fn eval(&self) -> Result<Object, EvalError> {
+        Ok(Object::Null)
     }
 }
 
@@ -226,9 +228,15 @@ impl Node for Expression {
         format!("Expression node: {self:?}")
     }
 
-    fn eval(&self) -> Object {
+    fn eval(&self) -> Result<Object, EvalError> {
         match &self {
-            Expression::IntegerLiteral(_, i) => Object::Integer(*i),
+            Expression::IntegerLiteral(_, i) => Ok(Object::Integer(*i)),
+            Expression::Bool(_, b) => Ok(Object::Boolean(*b)),
+            Expression::Prefix(t, l, e) => match t.token_type {
+                TokenType::Bang => eval_bang(e),
+                TokenType::Minus => eval_minus(e),
+                _ => panic!("This shouldn't happen"),
+            },
             _ => todo!(
                 "The Expression you're trying to evaluate doesn't have an evaluation function yet!"
             ),
@@ -326,10 +334,11 @@ impl Node for Statement {
         format!("Statement node: {self:?}")
     }
 
-    fn eval(&self) -> Object {
+    fn eval(&self) -> Result<Object, EvalError> {
         match &self {
-            Statement::Block(_, _) => self.eval(),
-            _ => self.expr().unwrap().eval(), // This unwrap is safe, because these statements must contains Expressions
+            Statement::Block(_, _) => Ok(self.eval()?),
+            _ => self.expr().unwrap().eval(), // This unwrap is safe,
+                                              // because these statements must contains Expressions
         }
     }
 }
@@ -361,10 +370,10 @@ impl Node for Program {
         "Program node".to_string()
     }
 
-    fn eval(&self) -> Object {
-        let mut result = Object::Null;
+    fn eval(&self) -> Result<Object, EvalError> {
+        let mut result = Ok(Object::Null);
         for statement in self.statements.iter() {
-            result = statement.eval();
+            result = Ok(statement.eval()?);
         }
         result
     }
