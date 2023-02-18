@@ -49,11 +49,20 @@ impl Object {
 
     /*
      * Booleans
+     *
+     * Booleans in this language are truthy: Every value can be coerced into
+     * a bool, and values are false:
+     * Boolean(false)
+     * None
+     * Integer(0)
+     *
+     * Everything else is true.
      */
-    pub fn as_bool(&self) -> Option<bool> {
+    pub fn as_bool(&self) -> bool {
         match &self {
-            Object::Boolean(b) => Some(*b),
-            _ => None,
+            Object::Boolean(b) => *b,
+            Object::Null | Object::Integer(0) => false,
+            _ => true,
         }
     }
 }

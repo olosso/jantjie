@@ -99,6 +99,33 @@ fn eval_bool_infix(a: bool, op: &str, b: bool) -> Result<Object, EvalError> {
     })
 }
 
+pub fn eval_block(statements: &[Statement]) -> Result<Object, EvalError> {
+    let mut result = Ok(Object::Null);
+    for statement in statements {
+        result = statement.eval()
+    }
+
+    result
+}
+
+/*
+ * IfElse
+ */
+pub fn eval_ifelse(
+    cond: &Expression,
+    cons: &Statement,
+    alt: &Option<Box<Statement>>,
+) -> Result<Object, EvalError> {
+    if cond.eval()?.as_bool() {
+        cons.eval()
+    } else {
+        match alt {
+            None => Ok(Object::Null),
+            Some(alt) => alt.eval(),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct EvalError(String, Option<Token>);
 impl EvalError {

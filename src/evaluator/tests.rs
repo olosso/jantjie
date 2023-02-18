@@ -114,7 +114,7 @@ mod evaluator_tests {
 
     fn test_bool_object(obj: Object, expected: bool) {
         assert_eq!(obj.obtype(), Type::BOOLEAN);
-        assert_eq!(obj.as_bool().unwrap(), expected);
+        assert_eq!(obj.as_bool(), expected);
     }
 
     /*
@@ -149,6 +149,48 @@ mod evaluator_tests {
         for case in cases {
             let value = eval(&case.program).unwrap();
             test_bool_object(value, case.expected);
+        }
+    }
+
+    /*
+     * Bang
+     */
+    struct IfElseTest {
+        input: String,
+        expected: i32,
+        program: Program,
+    }
+
+    impl IfElseTest {
+        fn new(input: &str, expected: i32) -> Self {
+            IfElseTest {
+                input: input.to_string(),
+                expected,
+                program: init(input),
+            }
+        }
+    }
+
+    #[test]
+    fn test_eval_ifelse_expression() {
+        let cases = vec![
+            IfElseTest::new("if (true) { 1 }", 1),
+            IfElseTest::new("if (false) { 1 } else { 2 }", 2),
+            IfElseTest::new("if (1<2) { 1 } else { 2 }", 1),
+            IfElseTest::new("if ((1<2)==true) { 1 } else { 2 }", 1),
+            IfElseTest::new("if (1) { 1 } else { 2 }", 1),
+            IfElseTest::new("if (0) { 1 } else { 2 }", 2),
+            IfElseTest::new("if (false) { 1 }", 0),
+            IfElseTest::new("if (false) { 1 } else { 2 }", 2),
+        ];
+
+        for case in cases {
+            let value = eval(&case.program).unwrap();
+            if case.expected == 0 {
+                assert!(value.is_null())
+            } else {
+                assert_eq!(value.as_int().unwrap(), case.expected)
+            }
         }
     }
 }

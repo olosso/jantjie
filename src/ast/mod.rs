@@ -238,6 +238,7 @@ impl Node for Expression {
                 _ => panic!("This shouldn't happen."),
             },
             Expression::Infix(_, l, op, r) => eval_infix(l, op, r),
+            Expression::If(_, cond, cons, alt) => eval_ifelse(cond, cons, alt),
             _ => todo!(
                 "The Expression you're trying to evaluate doesn't have an evaluation function yet!"
             ),
@@ -337,7 +338,7 @@ impl Node for Statement {
 
     fn eval(&self) -> Result<Object, EvalError> {
         match &self {
-            Statement::Block(_, _) => Ok(self.eval()?),
+            Statement::Block(_, statements) => eval_block(statements),
             _ => self.expr().unwrap().eval(), // This unwrap is safe,
                                               // because these statements must contains Expressions
         }
@@ -374,7 +375,7 @@ impl Node for Program {
     fn eval(&self) -> Result<Object, EvalError> {
         let mut result = Ok(Object::Null);
         for statement in self.statements.iter() {
-            result = Ok(statement.eval()?);
+            result = statement.eval();
         }
         result
     }
