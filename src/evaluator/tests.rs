@@ -38,6 +38,18 @@ mod evaluator_tests {
             IntegerEvalTest::new("10", 10),
             IntegerEvalTest::new("-5", -5),
             IntegerEvalTest::new("-10", -10),
+            IntegerEvalTest::new("5 + 5", 10),
+            IntegerEvalTest::new("5 + 5 + 5 + 5 - 10", 10),
+            IntegerEvalTest::new("2 * 2 * 2 * 2 * 2", 32),
+            IntegerEvalTest::new("-50 + 100 + -50", 0),
+            IntegerEvalTest::new("5 * 2 + 10", 20),
+            IntegerEvalTest::new("5 + 2 * 10", 25),
+            IntegerEvalTest::new("20 + 2 * -10", 0),
+            IntegerEvalTest::new("50 / 2 * 2 + 10", 60),
+            IntegerEvalTest::new("2 * (5 + 10)", 30),
+            IntegerEvalTest::new("3 * 3 * 3 + 10", 37),
+            IntegerEvalTest::new("3 * (3 * 3) + 10", 37),
+            IntegerEvalTest::new("(5 + 10 * 2 + 15 / 3) * 2 + -10", 50),
         ];
 
         for case in cases {
@@ -75,6 +87,23 @@ mod evaluator_tests {
         let cases = vec![
             BoolEvalTest::new("true", true),
             BoolEvalTest::new("false", false),
+            BoolEvalTest::new("1 < 2", true),
+            BoolEvalTest::new("1 > 2", false),
+            BoolEvalTest::new("1 < 1", false),
+            BoolEvalTest::new("1 > 1", false),
+            BoolEvalTest::new("1 == 1", true),
+            BoolEvalTest::new("1 == 2", false),
+            BoolEvalTest::new("1 != 2", true),
+            BoolEvalTest::new("1 != 1", false),
+            BoolEvalTest::new("true == true", true),
+            BoolEvalTest::new("false == false", true),
+            BoolEvalTest::new("true == false", false),
+            BoolEvalTest::new("false == true", false),
+            BoolEvalTest::new("true != false", true),
+            BoolEvalTest::new("false != false", false),
+            BoolEvalTest::new("(1 < 2) == true", true),
+            BoolEvalTest::new("(1 > 2) == true", false),
+            BoolEvalTest::new("(1 < 2) == false", false),
         ];
 
         for case in cases {

@@ -235,8 +235,9 @@ impl Node for Expression {
             Expression::Prefix(t, l, e) => match t.token_type {
                 TokenType::Bang => eval_bang(e),
                 TokenType::Minus => eval_minus(e),
-                _ => panic!("This shouldn't happen"),
+                _ => panic!("This shouldn't happen."),
             },
+            Expression::Infix(_, l, op, r) => eval_infix(l, op, r),
             _ => todo!(
                 "The Expression you're trying to evaluate doesn't have an evaluation function yet!"
             ),

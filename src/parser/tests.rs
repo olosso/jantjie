@@ -562,7 +562,6 @@ mod parser_tests {
 
         for case in cases {
             let program = init(&case.input);
-            dbg!("{}", program.to_string());
             let expr = &program.statements[0].expr().unwrap();
             let params = expr.params().unwrap();
             let body = expr.body().unwrap();
@@ -688,7 +687,6 @@ mod parser_tests {
 
         for case in cases {
             let program = init(&case.input);
-            dbg!(&program.to_string());
             assert_eq!(program.len(), case.statements.len());
             // assert!(program
             //     .statements

@@ -39,6 +39,66 @@ fn bang_error(expr: &Expression) -> EvalError {
     ))
 }
 
+/*
+ * Infix
+ */
+pub fn eval_infix(left: &Expression, op: &str, right: &Expression) -> Result<Object, EvalError> {
+    let left = left.eval();
+    let right = right.eval();
+    match left {
+        Ok(Object::Integer(a)) => {
+            if let Ok(Object::Integer(b)) = right {
+                eval_integer_infix(a, op, b)
+            } else {
+                Ok(Object::Null)
+            }
+        }
+        Ok(Object::Boolean(a)) => {
+            if let Ok(Object::Boolean(b)) = right {
+                eval_bool_infix(a, op, b)
+            } else {
+                Ok(Object::Null)
+            }
+        }
+        _ => todo!(),
+    }
+}
+
+fn eval_integer_infix(a: i32, op: &str, b: i32) -> Result<Object, EvalError> {
+    Ok(match op {
+        "+" => Object::Integer(a + b),
+        "-" => Object::Integer(a - b),
+        "*" => Object::Integer(a * b),
+        "/" => Object::Integer(a / b),
+
+        "==" => Object::Boolean(a == b),
+        "!=" => Object::Boolean(a != b),
+        "<" => Object::Boolean(a < b),
+        ">" => Object::Boolean(a > b),
+
+        _ => {
+            return Err(EvalError(
+                format!("Operator \"{op}\" not supported for integers"),
+                None,
+            ))
+        }
+    })
+}
+
+fn eval_bool_infix(a: bool, op: &str, b: bool) -> Result<Object, EvalError> {
+    Ok(match op {
+        "==" => Object::Boolean(a == b),
+        "!=" => Object::Boolean(a != b),
+
+        _ => {
+            return Err(EvalError(
+                format!("Operator \"{op}\" not supported for booleans."),
+                None,
+            ))
+        }
+    })
+}
+
 #[derive(Debug)]
 pub struct EvalError(String, Option<Token>);
 impl EvalError {

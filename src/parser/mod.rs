@@ -246,7 +246,8 @@ impl Parser {
             || self.cur_tokentype_is(TokenType::True)
             || self.cur_tokentype_is(TokenType::False)
             || self.cur_tokentype_is(TokenType::If)
-            || self.cur_tokentype_is(TokenType::Function))
+            || self.cur_tokentype_is(TokenType::Function)
+            || self.cur_tokentype_is(TokenType::LParen))
         {
             return Err(PE::new_t(
                 "First token in Expression was a {:?}, this is not supported.".to_string(),
