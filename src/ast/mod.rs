@@ -7,6 +7,7 @@ use crate::token::{Token, TokenType};
 pub trait Node {
     fn to_string(&self) -> String;
     fn node_type(&self) -> String;
+    fn token(&self) -> &Token;
     fn token_literal(&self) -> String {
         self.node_type()
     }
@@ -210,6 +211,19 @@ impl Node for Expression {
         }
     }
 
+    fn token(&self) -> &Token {
+        match self {
+            Expression::Bool(t, ..) => &t,
+            Expression::Identifier(t, ..) => &t,
+            Expression::IntegerLiteral(t, ..) => &t,
+            Expression::Prefix(t, ..) => &t,
+            Expression::Infix(t, ..) => &t,
+            Expression::If(t, ..) => &t,
+            Expression::Func(t, ..) => &t,
+            Expression::Call(t, ..) => &t,
+        }
+    }
+
     fn token_literal(&self) -> String {
         match self {
             Expression::Bool(t, ..) => t.literal.clone(),
@@ -323,6 +337,15 @@ impl Node for Statement {
         }
     }
 
+    fn token(&self) -> &Token {
+        match self {
+            Statement::Let(t, ..) => &t,
+            Statement::Return(t, ..) => &t,
+            Statement::Expr(t, ..) => &t,
+            Statement::Block(t, ..) => &t,
+        }
+    }
+
     fn token_literal(&self) -> String {
         match self {
             Statement::Let(t, ..) => t.literal.clone(),
@@ -352,9 +375,17 @@ impl Node for Statement {
 #[derive(Debug)]
 pub struct Program {
     pub statements: Vec<Statement>,
+    token: Token,
 }
 
 impl Program {
+    pub fn new(statements: Vec<Statement>) -> Self {
+        Program {
+            statements,
+            token: Token::new(TokenType::Program, "main".to_string()),
+        }
+    }
+
     pub fn len(&self) -> usize {
         self.statements.len()
     }
@@ -373,16 +404,20 @@ impl Node for Program {
         "Program node".to_string()
     }
 
-    fn eval(&self) -> Result<Object, EvalError> {
-        let mut result = Ok(Object::Null);
-        for statement in self.statements.iter() {
-            result = statement.eval();
+    fn token(&self) -> &Token {
+        &self.token
+    }
 
-            if let Ok(Object::Return(result)) = result {
+    fn eval(&self) -> Result<Object, EvalError> {
+        let mut result = Object::Null;
+        for statement in self.statements.iter() {
+            result = statement.eval()?;
+
+            if let Object::Return(result) = result {
                 return Ok(*result);
             }
         }
-        result
+        Ok(result)
     }
 }
 
@@ -393,28 +428,26 @@ mod ast_tests {
 
     #[test]
     fn test_program_string() {
-        let program = Program {
-            statements: vec![Statement::Let(
+        let program = Program::new(vec![Statement::Let(
+            Token {
+                token_type: TokenType::Let,
+                literal: "let".to_string(),
+            },
+            Expression::Identifier(
                 Token {
-                    token_type: TokenType::Let,
-                    literal: "let".to_string(),
+                    token_type: TokenType::Ident,
+                    literal: "foo".to_string(),
                 },
-                Expression::Identifier(
-                    Token {
-                        token_type: TokenType::Ident,
-                        literal: "foo".to_string(),
-                    },
-                    "foo".to_string(),
-                ),
-                Expression::Identifier(
-                    Token {
-                        token_type: TokenType::Ident,
-                        literal: "bar".to_string(),
-                    },
-                    "bar".to_string(),
-                ),
-            )],
-        };
+                "foo".to_string(),
+            ),
+            Expression::Identifier(
+                Token {
+                    token_type: TokenType::Ident,
+                    literal: "bar".to_string(),
+                },
+                "bar".to_string(),
+            ),
+        )]);
 
         assert_eq!(program.to_string(), "let foo = bar;")
     }

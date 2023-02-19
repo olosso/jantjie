@@ -17,7 +17,10 @@ pub fn eval_minus(expr: &Expression) -> Result<Object, EvalError> {
     match expr {
         // !int
         Expression::IntegerLiteral(_, i) => Ok(Object::Integer(-(*i))),
-        _ => Ok(Object::Null),
+        _ => Err(EvalError::new_t(
+            "Minus operator not supported for".to_string(),
+            expr.token().clone(),
+        )),
     }
 }
 
@@ -104,21 +107,21 @@ pub fn eval_return(expr: &Expression) -> Result<Object, EvalError> {
 }
 
 pub fn eval_block(statements: &[Statement]) -> Result<Object, EvalError> {
-    let mut result = Ok(Object::Null);
+    let mut result = Object::Null;
     for statement in statements {
-        result = statement.eval();
+        result = statement.eval()?;
 
         /*
-         * Note that the Return statement is not unwrapped!
+         * Note that the Return is not unwrapped!
          * It is propagated upwards to Program.eval() to
          * short-circuit it.
          */
-        if let Ok(Object::Return(..)) = result {
-            return result;
+        if let Object::Return(..) = result {
+            return Ok(result);
         }
     }
 
-    result
+    Ok(result)
 }
 
 /*
@@ -140,7 +143,7 @@ pub fn eval_ifelse(
 }
 
 #[derive(Debug)]
-pub struct EvalError(String, Option<Token>);
+pub struct EvalError(pub String, pub Option<Token>);
 impl EvalError {
     fn msg(&self) -> String {
         match &self.1 {

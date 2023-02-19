@@ -233,11 +233,45 @@ return 1;
 ",
                 10,
             ),
+            ReturnTest::new("if(1) { return 1; true + true; }", 1),
         ];
 
         for case in cases {
             let value = eval(&case.program).unwrap();
             assert_eq!(value.as_int().unwrap(), case.expected)
+        }
+    }
+
+    /*
+     * TestEvalError
+     */
+    struct EvalErrorTest {
+        input: String,
+        expected: String,
+        program: Program,
+    }
+
+    impl EvalErrorTest {
+        fn new(input: &str, expected: &str) -> Self {
+            EvalErrorTest {
+                input: input.to_string(),
+                expected: expected.to_string(),
+                program: init(input),
+            }
+        }
+    }
+
+    #[test]
+    fn test_eval_error_statements() {
+        let cases = vec![
+            EvalErrorTest::new("true + true", "Evaluation error"),
+            EvalErrorTest::new("if(1) { true + true; 1 }", "Evaluation error"),
+            EvalErrorTest::new("if(1) { true + true; return 1 }", "Evaluation error"),
+        ];
+
+        for case in cases {
+            let value = eval(&case.program);
+            assert!(matches!(value, Err(EvalError(..))))
         }
     }
 }

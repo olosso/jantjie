@@ -43,6 +43,9 @@ pub enum TokenType {
 
     True,
     False,
+
+    // Special
+    Program,
 }
 
 impl TokenType {
@@ -85,6 +88,8 @@ impl TokenType {
 
             TokenType::True => "TRUE",
             TokenType::False => "FALSE",
+
+            TokenType::Program => "PROGRAM",
         };
 
         String::from(s)
@@ -151,11 +156,4 @@ impl Token {
 
         Some(p)
     }
-}
-
-#[cfg(test)]
-mod token_tests {
-
-    #[test]
-    fn hello() {}
 }

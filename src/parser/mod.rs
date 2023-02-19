@@ -119,7 +119,7 @@ impl Parser {
     /// Parser::parse_program
     /// Goes through tokens found by the lexer and trys to find the statements.
     pub fn parse_program(&mut self) -> Result<Program, ParseError> {
-        let mut program = Program { statements: vec![] };
+        let mut program = Program::new(vec![]);
 
         /*
          * Loops over the Tokens produced by the Lexer.
