@@ -193,4 +193,51 @@ mod evaluator_tests {
             }
         }
     }
+
+    /*
+     * TestReturn
+     */
+    struct ReturnTest {
+        input: String,
+        expected: i32,
+        program: Program,
+    }
+
+    impl ReturnTest {
+        fn new(input: &str, expected: i32) -> Self {
+            ReturnTest {
+                input: input.to_string(),
+                expected,
+                program: init(input),
+            }
+        }
+    }
+
+    #[test]
+    fn test_eval_return_statements() {
+        let cases = vec![
+            ReturnTest::new("return 10; 5;", 10),
+            ReturnTest::new("return 10; return 5;", 10),
+            ReturnTest::new("10; return 5;", 5),
+            ReturnTest::new("1; return 1+1; 5;", 2),
+            ReturnTest::new("return 1+1; 1; 5;", 2),
+            ReturnTest::new("1; 1; return 1+1;", 2),
+            ReturnTest::new(
+                "
+if (10 > 1) {
+if (10 > 1) {
+return 10;
+}
+return 1;
+}
+",
+                10,
+            ),
+        ];
+
+        for case in cases {
+            let value = eval(&case.program).unwrap();
+            assert_eq!(value.as_int().unwrap(), case.expected)
+        }
+    }
 }

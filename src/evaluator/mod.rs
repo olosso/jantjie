@@ -92,17 +92,30 @@ fn eval_bool_infix(a: bool, op: &str, b: bool) -> Result<Object, EvalError> {
 
         _ => {
             return Err(EvalError(
-                format!("Operator \"{op}\" not supported for booleans."),
+                format!("Operator '{op}' not supported for booleans."),
                 None,
             ))
         }
     })
 }
 
+pub fn eval_return(expr: &Expression) -> Result<Object, EvalError> {
+    Ok(Object::Return(Box::new(expr.eval()?)))
+}
+
 pub fn eval_block(statements: &[Statement]) -> Result<Object, EvalError> {
     let mut result = Ok(Object::Null);
     for statement in statements {
-        result = statement.eval()
+        result = statement.eval();
+
+        /*
+         * Note that the Return statement is not unwrapped!
+         * It is propagated upwards to Program.eval() to
+         * short-circuit it.
+         */
+        if let Ok(Object::Return(..)) = result {
+            return result;
+        }
     }
 
     result

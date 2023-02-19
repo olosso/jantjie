@@ -339,6 +339,7 @@ impl Node for Statement {
     fn eval(&self) -> Result<Object, EvalError> {
         match &self {
             Statement::Block(_, statements) => eval_block(statements),
+            Statement::Return(_, e) => eval_return(e),
             _ => self.expr().unwrap().eval(), // This unwrap is safe,
                                               // because these statements must contains Expressions
         }
@@ -376,6 +377,10 @@ impl Node for Program {
         let mut result = Ok(Object::Null);
         for statement in self.statements.iter() {
             result = statement.eval();
+
+            if let Ok(Object::Return(result)) = result {
+                return Ok(*result);
+            }
         }
         result
     }

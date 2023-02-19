@@ -3,6 +3,7 @@ pub enum Type {
     NULL,
     INTEGER,
     BOOLEAN,
+    RETURN,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -10,6 +11,7 @@ pub enum Object {
     Null,
     Integer(i32),
     Boolean(bool),
+    Return(Box<Object>),
 }
 
 impl Object {
@@ -18,6 +20,7 @@ impl Object {
             Object::Null => Type::NULL,
             Object::Integer(_) => Type::INTEGER,
             Object::Boolean(_) => Type::BOOLEAN,
+            Object::Return(_) => Type::RETURN,
         }
     }
 
@@ -26,6 +29,7 @@ impl Object {
             Object::Null => "null".to_string(),
             Object::Integer(i) => i.to_string(),
             Object::Boolean(b) => b.to_string(),
+            Object::Return(v) => v.inspect(),
         }
     }
 
