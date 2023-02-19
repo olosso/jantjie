@@ -6,14 +6,14 @@ use crate::ast::*;
 use crate::object::*;
 use crate::token::{Token, TokenType};
 
-pub fn eval(program: &Program) -> Result<Object, EvalError> {
-    program.eval()
+pub fn eval(program: &Program, env: &mut Environment) -> Result<Object, EvalError> {
+    program.eval(env)
 }
 
 /*
  * MINUS
  */
-pub fn eval_minus(expr: &Expression) -> Result<Object, EvalError> {
+pub fn eval_minus(expr: &Expression, env: &mut Environment) -> Result<Object, EvalError> {
     match expr {
         // !int
         Expression::IntegerLiteral(_, i) => Ok(Object::Integer(-(*i))),
@@ -27,8 +27,8 @@ pub fn eval_minus(expr: &Expression) -> Result<Object, EvalError> {
 /*
  * BANGBANG
  */
-pub fn eval_bang(expr: &Expression) -> Result<Object, EvalError> {
-    match expr.eval() {
+pub fn eval_bang(expr: &Expression, env: &mut Environment) -> Result<Object, EvalError> {
+    match expr.eval(env) {
         Ok(Object::Boolean(b)) => Ok(Object::Boolean(!b)),
         Ok(Object::Null) => Ok(Object::Boolean(true)),
         _ => Ok(Object::Boolean(false)),
@@ -37,27 +37,36 @@ pub fn eval_bang(expr: &Expression) -> Result<Object, EvalError> {
 
 fn bang_error(expr: &Expression) -> EvalError {
     EvalError::new(format!(
-        "Bang not supported for the value {}",
-        expr.token_literal()
+        "Bang not supported for the value {:?}.",
+        expr.token().token_type
     ))
 }
 
 /*
  * Infix
  */
-pub fn eval_infix(left: &Expression, op: &str, right: &Expression) -> Result<Object, EvalError> {
-    let left = left.eval();
-    let right = right.eval();
+pub fn eval_infix(
+    left: &Expression,
+    op: &str,
+    right: &Expression,
+    env: &mut Environment,
+) -> Result<Object, EvalError> {
+    let left = left.eval(env)?;
+    let right = right.eval(env)?;
     match left {
-        Ok(Object::Integer(a)) => {
-            if let Ok(Object::Integer(b)) = right {
+        Object::Integer(a) => {
+            if let Object::Integer(b) = right {
                 eval_integer_infix(a, op, b)
             } else {
-                Ok(Object::Null)
+                Err(EvalError::new(format!(
+                    "Arithmetic not supported between types {:?} and {:?}.",
+                    left.obtype(),
+                    right.obtype()
+                )))
             }
         }
-        Ok(Object::Boolean(a)) => {
-            if let Ok(Object::Boolean(b)) = right {
+        Object::Boolean(a) => {
+            if let Object::Boolean(b) = right {
                 eval_bool_infix(a, op, b)
             } else {
                 Ok(Object::Null)
@@ -102,14 +111,14 @@ fn eval_bool_infix(a: bool, op: &str, b: bool) -> Result<Object, EvalError> {
     })
 }
 
-pub fn eval_return(expr: &Expression) -> Result<Object, EvalError> {
-    Ok(Object::Return(Box::new(expr.eval()?)))
+pub fn eval_return(expr: &Expression, env: &mut Environment) -> Result<Object, EvalError> {
+    Ok(Object::Return(Box::new(expr.eval(env)?)))
 }
 
-pub fn eval_block(statements: &[Statement]) -> Result<Object, EvalError> {
+pub fn eval_block(statements: &[Statement], env: &mut Environment) -> Result<Object, EvalError> {
     let mut result = Object::Null;
     for statement in statements {
-        result = statement.eval()?;
+        result = statement.eval(env)?;
 
         /*
          * Note that the Return is not unwrapped!
@@ -131,14 +140,40 @@ pub fn eval_ifelse(
     cond: &Expression,
     cons: &Statement,
     alt: &Option<Box<Statement>>,
+    env: &mut Environment,
 ) -> Result<Object, EvalError> {
-    if cond.eval()?.as_bool() {
-        cons.eval()
+    if cond.eval(env)?.as_bool() {
+        cons.eval(env)
     } else {
         match alt {
             None => Ok(Object::Null),
-            Some(alt) => alt.eval(),
+            Some(alt) => alt.eval(env),
         }
+    }
+}
+
+/*
+ * Let
+ */
+pub fn eval_let(
+    expr: &Expression,
+    ident: &Expression,
+    env: &mut Environment,
+) -> Result<Object, EvalError> {
+    let value = expr.eval(env)?;
+    let name = ident.token_literal();
+    env.add(&name, &value);
+
+    Ok(value)
+}
+
+pub fn eval_identifier(name: &String, env: &mut Environment) -> Result<Object, EvalError> {
+    match env.get(name) {
+        Some(value) => Ok(value.copy()),
+        None => Err(EvalError::new(format!(
+            "There is no bound symbol {}",
+            &name
+        ))),
     }
 }
 

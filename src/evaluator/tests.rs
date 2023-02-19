@@ -12,6 +12,12 @@ mod evaluator_tests {
         parser.parse_program().unwrap()
     }
 
+    fn eval_fresh(p: &Program) -> Result<Object, EvalError> {
+        let mut env = Environment::new();
+        let value = eval(p, &mut env);
+        value
+    }
+
     /*
      * Integer
      */
@@ -53,7 +59,7 @@ mod evaluator_tests {
         ];
 
         for case in cases {
-            let value = eval(&case.program).unwrap();
+            let value = eval_fresh(&case.program).unwrap();
             test_integer_object(value, case.expected);
         }
     }
@@ -107,7 +113,7 @@ mod evaluator_tests {
         ];
 
         for case in cases {
-            let value = eval(&case.program).unwrap();
+            let value = eval_fresh(&case.program).unwrap();
             test_bool_object(value, case.expected);
         }
     }
@@ -147,7 +153,7 @@ mod evaluator_tests {
         ];
 
         for case in cases {
-            let value = eval(&case.program).unwrap();
+            let value = eval_fresh(&case.program).unwrap();
             test_bool_object(value, case.expected);
         }
     }
@@ -185,7 +191,7 @@ mod evaluator_tests {
         ];
 
         for case in cases {
-            let value = eval(&case.program).unwrap();
+            let value = eval_fresh(&case.program).unwrap();
             if case.expected == 0 {
                 assert!(value.is_null())
             } else {
@@ -237,7 +243,7 @@ return 1;
         ];
 
         for case in cases {
-            let value = eval(&case.program).unwrap();
+            let value = eval_fresh(&case.program).unwrap();
             assert_eq!(value.as_int().unwrap(), case.expected)
         }
     }
@@ -267,11 +273,45 @@ return 1;
             EvalErrorTest::new("true + true", "Evaluation error"),
             EvalErrorTest::new("if(1) { true + true; 1 }", "Evaluation error"),
             EvalErrorTest::new("if(1) { true + true; return 1 }", "Evaluation error"),
+            EvalErrorTest::new("let a = 1; a+b", "Evaluation error"),
         ];
 
         for case in cases {
-            let value = eval(&case.program);
+            let value = eval_fresh(&case.program);
             assert!(matches!(value, Err(EvalError(..))))
+        }
+    }
+
+    /*
+     * TestLetStatement
+     */
+    struct LetTest {
+        input: String,
+        expected: i32,
+        program: Program,
+    }
+
+    impl LetTest {
+        fn new(input: &str, expected: i32) -> Self {
+            LetTest {
+                input: input.to_string(),
+                expected,
+                program: init(input),
+            }
+        }
+    }
+
+    #[test]
+    fn test_eval_let_statements() {
+        let cases = vec![
+            LetTest::new("let a = 1; a", 1),
+            // LetTest::new("let a = 1; let b = 2; a+b", 3),
+            // LetTest::new("let a = 1; let b = a + 1; b", 2),
+        ];
+
+        for case in cases {
+            let value = eval_fresh(&case.program).unwrap();
+            assert_eq!(value.as_int().unwrap(), case.expected)
         }
     }
 }

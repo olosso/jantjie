@@ -1,5 +1,5 @@
 use crate::evaluator::*;
-use crate::object::Object;
+use crate::object::{Environment, Object};
 use crate::parser::ParseError;
 use crate::token::{Token, TokenType};
 
@@ -11,7 +11,7 @@ pub trait Node {
     fn token_literal(&self) -> String {
         self.node_type()
     }
-    fn eval(&self) -> Result<Object, EvalError> {
+    fn eval(&self, env: &mut Environment) -> Result<Object, EvalError> {
         Ok(Object::Null)
     }
 }
@@ -242,17 +242,18 @@ impl Node for Expression {
         format!("Expression node: {self:?}")
     }
 
-    fn eval(&self) -> Result<Object, EvalError> {
+    fn eval(&self, env: &mut Environment) -> Result<Object, EvalError> {
         match &self {
+            Expression::Identifier(_, name) => eval_identifier(name, env),
             Expression::IntegerLiteral(_, i) => Ok(Object::Integer(*i)),
             Expression::Bool(_, b) => Ok(Object::Boolean(*b)),
             Expression::Prefix(t, l, e) => match t.token_type {
-                TokenType::Bang => eval_bang(e),
-                TokenType::Minus => eval_minus(e),
+                TokenType::Bang => eval_bang(e, env),
+                TokenType::Minus => eval_minus(e, env),
                 _ => panic!("This shouldn't happen."),
             },
-            Expression::Infix(_, l, op, r) => eval_infix(l, op, r),
-            Expression::If(_, cond, cons, alt) => eval_ifelse(cond, cons, alt),
+            Expression::Infix(_, l, op, r) => eval_infix(l, op, r, env),
+            Expression::If(_, cond, cons, alt) => eval_ifelse(cond, cons, alt, env),
             _ => todo!(
                 "The Expression you're trying to evaluate doesn't have an evaluation function yet!"
             ),
@@ -359,12 +360,13 @@ impl Node for Statement {
         format!("Statement node: {self:?}")
     }
 
-    fn eval(&self) -> Result<Object, EvalError> {
+    fn eval(&self, env: &mut Environment) -> Result<Object, EvalError> {
         match &self {
-            Statement::Block(_, statements) => eval_block(statements),
-            Statement::Return(_, e) => eval_return(e),
-            _ => self.expr().unwrap().eval(), // This unwrap is safe,
-                                              // because these statements must contains Expressions
+            Statement::Block(_, statements) => eval_block(statements, env),
+            Statement::Return(_, e) => eval_return(e, env),
+            Statement::Let(_, ident, expr) => eval_let(expr, ident, env),
+            _ => self.expr().unwrap().eval(env), // This unwrap is safe,
+                                                 // because these statements must contains Expressions
         }
     }
 }
@@ -408,10 +410,10 @@ impl Node for Program {
         &self.token
     }
 
-    fn eval(&self) -> Result<Object, EvalError> {
+    fn eval(&self, env: &mut Environment) -> Result<Object, EvalError> {
         let mut result = Object::Null;
         for statement in self.statements.iter() {
-            result = statement.eval()?;
+            result = statement.eval(env)?;
 
             if let Object::Return(result) = result {
                 return Ok(*result);

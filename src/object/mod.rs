@@ -1,3 +1,5 @@
+use std::{collections::HashMap, ops::Deref};
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum Type {
     NULL,
@@ -68,5 +70,43 @@ impl Object {
             Object::Null | Object::Integer(0) => false,
             _ => true,
         }
+    }
+
+    pub fn copy(&self) -> Object {
+        match self {
+            Self::Null => Self::Null,
+            Self::Integer(i) => Self::Integer(*i),
+            Self::Boolean(b) => Self::Boolean(*b),
+            Self::Return(obj) => Self::Null, // TODO This is a quick fix. Not sure what to do.
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct Environment(HashMap<String, Object>);
+
+impl Environment {
+    pub fn new() -> Self {
+        Environment(HashMap::new())
+    }
+
+    pub fn to_str(&self) -> String {
+        let mut msg = String::new();
+        for (name, obj) in &self.0 {
+            msg.push_str(
+                format!("{}: {:?}\n", name.as_str(), *obj)
+                    .to_owned()
+                    .as_str(),
+            )
+        }
+        msg
+    }
+
+    pub fn add(&mut self, name: &str, obj: &Object) {
+        self.0.insert(name.to_string(), obj.copy());
+    }
+
+    pub fn get(&self, name: &String) -> Option<&Object> {
+        self.0.get(name)
     }
 }
