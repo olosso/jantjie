@@ -24,7 +24,7 @@ pub enum Object {
     Integer(i32),
     Boolean(bool),
     Return(Box<Self>),
-    Function(Params, Body, Environment),
+    // Function(Params, Body, Environment),
 }
 
 impl PartialEq for Object {
@@ -57,19 +57,18 @@ impl PartialEq for Object {
                 } else {
                     false
                 }
-            }
-            Object::Function(f1, _, _) => {
-                // TODO
-                // if let Object::Function(f2, _, _) = other {
-                //     f1.token_literal() == f2.token_literal()
-                // } else {
-                //     false
-                // }
-                false
-            }
+            } // Object::Function(f1, _, _) => {
+              //     // TODO
+              //     // if let Object::Function(f2, _, _) = other {
+              //     //     f1.token_literal() == f2.token_literal()
+              //     // } else {
+              //     //     false
+              //     // }
+              //     false
         }
     }
 }
+
 impl Eq for Object {}
 
 impl Object {
@@ -79,7 +78,7 @@ impl Object {
             Object::Integer(_) => Type::INTEGER,
             Object::Boolean(_) => Type::BOOLEAN,
             Object::Return(_) => Type::RETURN,
-            Object::Function(..) => Type::FUNCTION,
+            // Object::Function(..) => Type::FUNCTION,
         }
     }
 
@@ -89,20 +88,19 @@ impl Object {
             Object::Integer(i) => i.to_string(),
             Object::Boolean(b) => b.to_string(),
             Object::Return(v) => v.inspect(),
-            Object::Function(t, body, env) => {
-                let mut s = String::new();
-                s.push('\n');
+            // Object::Function(t, body, env) => {
+            //     let mut s = String::new();
+            //     s.push('\n');
 
-                s.push_str(&env.to_str());
+            //     s.push_str(&env.to_str());
 
-                if let Statement::Block(t, statements) = &**body {
-                    for statement in statements.iter() {
-                        s.push_str(&statement.to_string());
-                    }
-                };
+            //     if let Statement::Block(t, statements) = &**body {
+            //         for statement in statements.iter() {
+            //             s.push_str(&statement.to_string());
+            //         }
+            //     };
 
-                s
-            }
+            //     s
         }
     }
 
@@ -148,17 +146,21 @@ impl Object {
             Self::Integer(i) => Self::Integer(*i),
             Self::Boolean(b) => Self::Boolean(*b),
             Self::Return(obj) => Self::Null, // TODO This is a quick fix. Not sure what to do.
-            Self::Function(n, b, e) => Self::Null, // TODO This is a quick fix. Not sure what to do.
+                                             // Self::Function(n, b, e) => Self::Null, // TODO This is a quick fix. Not sure what to do.
         }
     }
 }
 
 #[derive(Debug)]
-pub struct Environment(HashMap<String, Object>);
+pub struct Environment<'a>(HashMap<String, Object>, Option<&'a Self>);
 
-impl Environment {
-    pub fn new() -> Self {
-        Environment(HashMap::new())
+impl<'a> Environment<'a> {
+    pub fn global() -> Self {
+        Environment(HashMap::new(), None)
+    }
+
+    pub fn local(other: &'a Self) -> Self {
+        Environment(HashMap::new(), Some(other))
     }
 
     pub fn to_str(&self) -> String {
@@ -178,6 +180,13 @@ impl Environment {
     }
 
     pub fn get(&self, name: &String) -> Option<&Object> {
-        self.0.get(name)
+        let obj = self.0.get(name);
+        match obj {
+            Some(obj) => Some(obj),
+            None => match self.1 {
+                Some(env) => env.get(name),
+                None => None,
+            },
+        }
     }
 }

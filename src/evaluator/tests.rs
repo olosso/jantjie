@@ -13,9 +13,8 @@ mod evaluator_tests {
     }
 
     fn eval_fresh(p: &Program) -> Result<Object, EvalError> {
-        let mut env = Environment::new();
-        let value = eval(p, &mut env);
-        value
+        let mut env = Environment::global();
+        eval(p, &mut env)
     }
 
     /*
@@ -188,6 +187,7 @@ mod evaluator_tests {
             IfElseTest::new("if (0) { 1 } else { 2 }", 2),
             IfElseTest::new("if (false) { 1 }", 0),
             IfElseTest::new("if (false) { 1 } else { 2 }", 2),
+            IfElseTest::new("let x = 1; if (true) { x + 2; } else { 2 }", 3),
         ];
 
         for case in cases {
@@ -274,6 +274,8 @@ return 1;
             EvalErrorTest::new("if(1) { true + true; 1 }", "Evaluation error"),
             EvalErrorTest::new("if(1) { true + true; return 1 }", "Evaluation error"),
             EvalErrorTest::new("let a = 1; a+b", "Evaluation error"),
+            EvalErrorTest::new("let a = 1; a+b", "Evaluation error"),
+            EvalErrorTest::new("if (true) { let x + 2; }; x;", "Evaluation error"),
         ];
 
         for case in cases {

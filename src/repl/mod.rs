@@ -11,7 +11,7 @@ impl REPL {
     pub fn run() -> io::Result<()> {
         println!("Welcome to the REPL.");
         println!("Enter 'q' to quit the intrepreter.");
-        let mut environment = Environment::new();
+        let mut environment = Environment::global();
         loop {
             print!(">>> ");
             io::stdout().flush().unwrap();

@@ -38,7 +38,7 @@ fn eval_statement(statement: &Statement, env: &mut Environment) -> Result<Object
 
 pub fn eval_block(statements: &[Statement], env: &Environment) -> Result<Object, EvalError> {
     let mut result = Object::Null;
-    let mut block_env = Environment::new();
+    let mut block_env = Environment::local(env);
     for statement in statements {
         result = eval_statement(statement, &mut block_env)?;
 
