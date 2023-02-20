@@ -305,8 +305,8 @@ return 1;
     fn test_eval_let_statements() {
         let cases = vec![
             LetTest::new("let a = 1; a", 1),
-            // LetTest::new("let a = 1; let b = 2; a+b", 3),
-            // LetTest::new("let a = 1; let b = a + 1; b", 2),
+            LetTest::new("let a = 1; let b = 2; a+b", 3),
+            LetTest::new("let a = 1; let b = a + 1; b", 2),
         ];
 
         for case in cases {

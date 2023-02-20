@@ -6,14 +6,79 @@ use crate::ast::*;
 use crate::object::*;
 use crate::token::{Token, TokenType};
 
-pub fn eval(program: &Program, env: &mut Environment) -> Result<Object, EvalError> {
-    program.eval(env)
+pub fn eval(program: &Program, global: &mut Environment) -> Result<Object, EvalError> {
+    let mut value = Ok(Object::Null);
+    for statement in program.statements.iter() {
+        value = match statement {
+            Statement::Expr(_, expr) => eval_expression(expr, global),
+            Statement::Return(_, expr) => eval_return(expr, global),
+            Statement::Let(_, name, expr) => eval_let(name, expr, global), // NOTE Only let is allowed to mutate the environment.
+            Statement::Block(_, statements) => eval_block(statements, global),
+        };
+
+        if let Ok(Object::Return(value)) = value {
+            return Ok(*value);
+        };
+    }
+
+    value
+}
+
+fn eval_statement(statement: &Statement, env: &mut Environment) -> Result<Object, EvalError> {
+    let mut value = Ok(Object::Null);
+    value = match statement {
+        Statement::Expr(_, expr) => eval_expression(expr, env),
+        Statement::Return(_, expr) => eval_return(expr, env),
+        Statement::Let(_, name, expr) => eval_let(name, expr, env), // NOTE Only let is allowed to mutate the environment.
+        Statement::Block(_, statements) => eval_block(statements, env),
+    };
+
+    value
+}
+
+pub fn eval_block(statements: &[Statement], env: &Environment) -> Result<Object, EvalError> {
+    let mut result = Object::Null;
+    let mut block_env = Environment::new();
+    for statement in statements {
+        result = eval_statement(statement, &mut block_env)?;
+
+        /*
+         * Note that the Return is not unwrapped!
+         * It is propagated upwards to Program.eval() to
+         * short-circuit it.
+         */
+        if let Object::Return(..) = result {
+            return Ok(result);
+        }
+    }
+
+    Ok(result)
+}
+
+fn eval_expression(expr: &Expression, env: &Environment) -> Result<Object, EvalError> {
+    match expr {
+        Expression::Bool(_, b) => Ok(Object::Boolean(*b)),
+        Expression::IntegerLiteral(_, i) => Ok(Object::Integer(*i)),
+        Expression::Prefix(_, op, expr) => eval_prefix(expr, op, env),
+        Expression::Infix(_, left, op, right) => eval_infix(left, op, right, env),
+        Expression::Identifier(_, ident) => eval_identifier(ident, env),
+        Expression::If(_, cond, cons, alt) => eval_ifelse(cond, cons, alt, env),
+        _ => Ok(Object::Null),
+    }
+}
+
+fn eval_prefix(expr: &Expression, op: &str, env: &Environment) -> Result<Object, EvalError> {
+    match op {
+        "-" => eval_minus(expr, env),
+        "!" => eval_bang(expr, env),
+        _ => panic!("Lexer shouldn't allow this to happen."),
+    }
 }
 
 /*
  * MINUS
  */
-pub fn eval_minus(expr: &Expression, env: &mut Environment) -> Result<Object, EvalError> {
+pub fn eval_minus(expr: &Expression, env: &Environment) -> Result<Object, EvalError> {
     match expr {
         // !int
         Expression::IntegerLiteral(_, i) => Ok(Object::Integer(-(*i))),
@@ -27,8 +92,8 @@ pub fn eval_minus(expr: &Expression, env: &mut Environment) -> Result<Object, Ev
 /*
  * BANGBANG
  */
-pub fn eval_bang(expr: &Expression, env: &mut Environment) -> Result<Object, EvalError> {
-    match expr.eval(env) {
+pub fn eval_bang(expr: &Expression, env: &Environment) -> Result<Object, EvalError> {
+    match eval_expression(expr, env) {
         Ok(Object::Boolean(b)) => Ok(Object::Boolean(!b)),
         Ok(Object::Null) => Ok(Object::Boolean(true)),
         _ => Ok(Object::Boolean(false)),
@@ -49,10 +114,10 @@ pub fn eval_infix(
     left: &Expression,
     op: &str,
     right: &Expression,
-    env: &mut Environment,
+    env: &Environment,
 ) -> Result<Object, EvalError> {
-    let left = left.eval(env)?;
-    let right = right.eval(env)?;
+    let left = eval_expression(left, env)?;
+    let right = eval_expression(right, env)?;
     match left {
         Object::Integer(a) => {
             if let Object::Integer(b) = right {
@@ -111,26 +176,8 @@ fn eval_bool_infix(a: bool, op: &str, b: bool) -> Result<Object, EvalError> {
     })
 }
 
-pub fn eval_return(expr: &Expression, env: &mut Environment) -> Result<Object, EvalError> {
-    Ok(Object::Return(Box::new(expr.eval(env)?)))
-}
-
-pub fn eval_block(statements: &[Statement], env: &mut Environment) -> Result<Object, EvalError> {
-    let mut result = Object::Null;
-    for statement in statements {
-        result = statement.eval(env)?;
-
-        /*
-         * Note that the Return is not unwrapped!
-         * It is propagated upwards to Program.eval() to
-         * short-circuit it.
-         */
-        if let Object::Return(..) = result {
-            return Ok(result);
-        }
-    }
-
-    Ok(result)
+pub fn eval_return(expr: &Expression, env: &Environment) -> Result<Object, EvalError> {
+    Ok(Object::Return(Box::new(eval_expression(expr, env)?)))
 }
 
 /*
@@ -140,14 +187,24 @@ pub fn eval_ifelse(
     cond: &Expression,
     cons: &Statement,
     alt: &Option<Box<Statement>>,
-    env: &mut Environment,
+    env: &Environment,
 ) -> Result<Object, EvalError> {
-    if cond.eval(env)?.as_bool() {
-        cons.eval(env)
+    if eval_expression(cond, env)?.as_bool() {
+        if let Statement::Block(_, statements) = cons {
+            eval_block(statements, env)
+        } else {
+            panic!("Lexer shouldn't allow a non-block statement in If");
+        }
     } else {
         match alt {
             None => Ok(Object::Null),
-            Some(alt) => alt.eval(env),
+            Some(alt) => {
+                if let Statement::Block(_, statements) = &**alt {
+                    eval_block(statements, env)
+                } else {
+                    panic!("Lexer shouldn't allow a non-block statement in If");
+                }
+            }
         }
     }
 }
@@ -156,22 +213,22 @@ pub fn eval_ifelse(
  * Let
  */
 pub fn eval_let(
-    expr: &Expression,
     ident: &Expression,
+    expr: &Expression,
     env: &mut Environment,
 ) -> Result<Object, EvalError> {
-    let value = expr.eval(env)?;
+    let value = eval_expression(expr, env)?;
     let name = ident.token_literal();
     env.add(&name, &value);
 
     Ok(value)
 }
 
-pub fn eval_identifier(name: &String, env: &mut Environment) -> Result<Object, EvalError> {
+pub fn eval_identifier(name: &String, env: &Environment) -> Result<Object, EvalError> {
     match env.get(name) {
         Some(value) => Ok(value.copy()),
         None => Err(EvalError::new(format!(
-            "There is no bound symbol {}",
+            "The symbol '{}' is not bound to any value.",
             &name
         ))),
     }
