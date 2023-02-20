@@ -24,8 +24,8 @@ type Right = Box<Expression>;
 type Condition = Box<Expression>;
 type Consequence = Box<Statement>;
 type Alternative = Box<Statement>;
-type Body = Box<Statement>;
-type Params = Vec<Expression>;
+pub type Body = Box<Statement>;
+pub type Params = Vec<Expression>;
 type Arguments = Vec<Expression>;
 #[derive(Debug, Clone)]
 pub enum Expression {
@@ -340,10 +340,10 @@ impl Node for Statement {
 
     fn token(&self) -> &Token {
         match self {
-            Statement::Let(t, ..) => &t,
-            Statement::Return(t, ..) => &t,
-            Statement::Expr(t, ..) => &t,
-            Statement::Block(t, ..) => &t,
+            Statement::Let(t, ..) => t,
+            Statement::Return(t, ..) => t,
+            Statement::Expr(t, ..) => t,
+            Statement::Block(t, ..) => t,
         }
     }
 

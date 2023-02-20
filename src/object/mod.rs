@@ -1,20 +1,76 @@
+use crate::ast::{Body, Node, Params, Statement};
+use core::cmp::PartialEq;
+use std::rc::Rc;
 use std::{collections::HashMap, ops::Deref};
 
+/*
+ * @TYPE
+ */
 #[derive(Debug, PartialEq, Eq)]
 pub enum Type {
     NULL,
     INTEGER,
     BOOLEAN,
     RETURN,
+    FUNCTION,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+/*
+ * @OBJECT
+ */
+#[derive(Debug)]
 pub enum Object {
     Null,
     Integer(i32),
     Boolean(bool),
-    Return(Box<Object>),
+    Return(Box<Self>),
+    Function(Params, Body, Environment),
 }
+
+impl PartialEq for Object {
+    fn eq(&self, other: &Self) -> bool {
+        match self {
+            Object::Null => {
+                if let Object::Null = other {
+                    true
+                } else {
+                    false
+                }
+            }
+            Object::Integer(a) => {
+                if let Object::Integer(b) = other {
+                    a == b
+                } else {
+                    false
+                }
+            }
+            Object::Boolean(a) => {
+                if let Object::Boolean(b) = other {
+                    a == b
+                } else {
+                    false
+                }
+            }
+            Object::Return(a) => {
+                if let Object::Return(b) = other {
+                    **a == **b
+                } else {
+                    false
+                }
+            }
+            Object::Function(f1, _, _) => {
+                // TODO
+                // if let Object::Function(f2, _, _) = other {
+                //     f1.token_literal() == f2.token_literal()
+                // } else {
+                //     false
+                // }
+                false
+            }
+        }
+    }
+}
+impl Eq for Object {}
 
 impl Object {
     pub fn obtype(&self) -> Type {
@@ -23,6 +79,7 @@ impl Object {
             Object::Integer(_) => Type::INTEGER,
             Object::Boolean(_) => Type::BOOLEAN,
             Object::Return(_) => Type::RETURN,
+            Object::Function(..) => Type::FUNCTION,
         }
     }
 
@@ -32,13 +89,26 @@ impl Object {
             Object::Integer(i) => i.to_string(),
             Object::Boolean(b) => b.to_string(),
             Object::Return(v) => v.inspect(),
+            Object::Function(t, body, env) => {
+                let mut s = String::new();
+                s.push('\n');
+
+                s.push_str(&env.to_str());
+
+                if let Statement::Block(t, statements) = &**body {
+                    for statement in statements.iter() {
+                        s.push_str(&statement.to_string());
+                    }
+                };
+
+                s
+            }
         }
     }
 
     /*
      * Nulls
      */
-    const NULL: Object = Object::Null;
     pub fn is_null(&self) -> bool {
         *self == Object::Null
     }
@@ -78,6 +148,7 @@ impl Object {
             Self::Integer(i) => Self::Integer(*i),
             Self::Boolean(b) => Self::Boolean(*b),
             Self::Return(obj) => Self::Null, // TODO This is a quick fix. Not sure what to do.
+            Self::Function(n, b, e) => Self::Null, // TODO This is a quick fix. Not sure what to do.
         }
     }
 }
