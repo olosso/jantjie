@@ -5,8 +5,9 @@ use std::fmt;
 use crate::ast::*;
 use crate::object::*;
 use crate::token::{Token, TokenType};
+use std::rc::Rc;
 
-pub fn eval(program: &Program, global: &mut Environment) -> Result<Object, EvalError> {
+pub fn eval(program: &Program, global: &Rc<Environment>) -> Result<Object, EvalError> {
     let mut value = Ok(Object::Null);
     for statement in program.statements.iter() {
         value = match statement {
@@ -24,7 +25,7 @@ pub fn eval(program: &Program, global: &mut Environment) -> Result<Object, EvalE
     value
 }
 
-fn eval_statement(statement: &Statement, env: &mut Environment) -> Result<Object, EvalError> {
+fn eval_statement(statement: &Statement, env: &Rc<Environment>) -> Result<Object, EvalError> {
     let mut value = Ok(Object::Null);
     value = match statement {
         Statement::Expr(_, expr) => eval_expression(expr, env),
@@ -36,12 +37,11 @@ fn eval_statement(statement: &Statement, env: &mut Environment) -> Result<Object
     value
 }
 
-pub fn eval_block(statements: &[Statement], env: &Environment) -> Result<Object, EvalError> {
+pub fn eval_block(statements: &[Statement], env: &Rc<Environment>) -> Result<Object, EvalError> {
     let mut result = Object::Null;
-    let mut block_env = Environment::local(env);
+    // let block_env = Rc::new(Environment::local(env));
     for statement in statements {
-        result = eval_statement(statement, &mut block_env)?;
-
+        result = eval_statement(statement, env)?;
         /*
          * Note that the Return is not unwrapped!
          * It is propagated upwards to Program.eval() to
@@ -55,7 +55,7 @@ pub fn eval_block(statements: &[Statement], env: &Environment) -> Result<Object,
     Ok(result)
 }
 
-fn eval_expression(expr: &Expression, env: &Environment) -> Result<Object, EvalError> {
+fn eval_expression(expr: &Expression, env: &Rc<Environment>) -> Result<Object, EvalError> {
     match expr {
         Expression::Bool(_, b) => Ok(Object::Boolean(*b)),
         Expression::IntegerLiteral(_, i) => Ok(Object::Integer(*i)),
@@ -63,11 +63,56 @@ fn eval_expression(expr: &Expression, env: &Environment) -> Result<Object, EvalE
         Expression::Infix(_, left, op, right) => eval_infix(left, op, right, env),
         Expression::Identifier(_, ident) => eval_identifier(ident, env),
         Expression::If(_, cond, cons, alt) => eval_ifelse(cond, cons, alt, env),
+        Expression::Func(_, params, body) => eval_function(params, body, env),
+        Expression::Call(_, ident, args) => eval_call(ident, args, env),
         _ => Ok(Object::Null),
     }
 }
 
-fn eval_prefix(expr: &Expression, op: &str, env: &Environment) -> Result<Object, EvalError> {
+fn eval_expressions(exprs: &[Expression], env: &Rc<Environment>) -> Result<Vec<Object>, EvalError> {
+    let mut results = vec![];
+    for expr in exprs.iter() {
+        results.push(eval_expression(expr, env)?);
+    }
+
+    Ok(results)
+}
+
+fn eval_call(
+    ident: &Expression,
+    args: &[Expression],
+    env: &Rc<Environment>,
+) -> Result<Object, EvalError> {
+    let func = eval_expression(ident, env)?;
+    assert!(matches!(func, Object::Function(..)));
+    let args = eval_expressions(args, env)?;
+
+    apply_function(&func, &args)
+}
+
+fn apply_function(func: &Object, args: &[Object]) -> Result<Object, EvalError> {
+    if let Object::Function(params, body, env) = func {
+        for (param, arg) in params.iter().zip(args) {
+            env.add(&param.to_string(), arg);
+        }
+        let env = Rc::new(env.clone());
+        eval_statement(body, &env)
+    } else {
+        Err(EvalError::new("Couldn't apply function".to_string()))
+    }
+}
+
+fn eval_function(
+    params: &[Expression],
+    body: &Statement,
+    env: &Rc<Environment>,
+) -> Result<Object, EvalError> {
+    let local = Environment::local(env);
+
+    Ok(Object::Function(params.to_vec(), body.clone(), local))
+}
+
+fn eval_prefix(expr: &Expression, op: &str, env: &Rc<Environment>) -> Result<Object, EvalError> {
     match op {
         "-" => eval_minus(expr, env),
         "!" => eval_bang(expr, env),
@@ -78,7 +123,7 @@ fn eval_prefix(expr: &Expression, op: &str, env: &Environment) -> Result<Object,
 /*
  * MINUS
  */
-pub fn eval_minus(expr: &Expression, env: &Environment) -> Result<Object, EvalError> {
+pub fn eval_minus(expr: &Expression, env: &Rc<Environment>) -> Result<Object, EvalError> {
     match expr {
         // !int
         Expression::IntegerLiteral(_, i) => Ok(Object::Integer(-(*i))),
@@ -92,7 +137,7 @@ pub fn eval_minus(expr: &Expression, env: &Environment) -> Result<Object, EvalEr
 /*
  * BANGBANG
  */
-pub fn eval_bang(expr: &Expression, env: &Environment) -> Result<Object, EvalError> {
+pub fn eval_bang(expr: &Expression, env: &Rc<Environment>) -> Result<Object, EvalError> {
     match eval_expression(expr, env) {
         Ok(Object::Boolean(b)) => Ok(Object::Boolean(!b)),
         Ok(Object::Null) => Ok(Object::Boolean(true)),
@@ -114,7 +159,7 @@ pub fn eval_infix(
     left: &Expression,
     op: &str,
     right: &Expression,
-    env: &Environment,
+    env: &Rc<Environment>,
 ) -> Result<Object, EvalError> {
     let left = eval_expression(left, env)?;
     let right = eval_expression(right, env)?;
@@ -176,7 +221,7 @@ fn eval_bool_infix(a: bool, op: &str, b: bool) -> Result<Object, EvalError> {
     })
 }
 
-pub fn eval_return(expr: &Expression, env: &Environment) -> Result<Object, EvalError> {
+pub fn eval_return(expr: &Expression, env: &Rc<Environment>) -> Result<Object, EvalError> {
     Ok(Object::Return(Box::new(eval_expression(expr, env)?)))
 }
 
@@ -187,7 +232,7 @@ pub fn eval_ifelse(
     cond: &Expression,
     cons: &Statement,
     alt: &Option<Box<Statement>>,
-    env: &Environment,
+    env: &Rc<Environment>,
 ) -> Result<Object, EvalError> {
     if eval_expression(cond, env)?.as_bool() {
         if let Statement::Block(_, statements) = cons {
@@ -215,7 +260,7 @@ pub fn eval_ifelse(
 pub fn eval_let(
     ident: &Expression,
     expr: &Expression,
-    env: &mut Environment,
+    env: &Rc<Environment>,
 ) -> Result<Object, EvalError> {
     let value = eval_expression(expr, env)?;
     let name = ident.token_literal();
@@ -224,7 +269,7 @@ pub fn eval_let(
     Ok(value)
 }
 
-pub fn eval_identifier(name: &String, env: &Environment) -> Result<Object, EvalError> {
+pub fn eval_identifier(name: &String, env: &Rc<Environment>) -> Result<Object, EvalError> {
     match env.get(name) {
         Some(value) => Ok(value.copy()),
         None => Err(EvalError::new(format!(

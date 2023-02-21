@@ -13,8 +13,8 @@ mod evaluator_tests {
     }
 
     fn eval_fresh(p: &Program) -> Result<Object, EvalError> {
-        let mut env = Environment::global();
-        eval(p, &mut env)
+        let env = Rc::new(Environment::global());
+        eval(p, &env)
     }
 
     /*
@@ -315,5 +315,83 @@ return 1;
             let value = eval_fresh(&case.program).unwrap();
             assert_eq!(value.as_int().unwrap(), case.expected)
         }
+    }
+
+    /*
+     * TestFunctionLiteral
+     */
+    struct FunctionTest {
+        input: String,
+        program: Program,
+    }
+
+    impl FunctionTest {
+        fn new(input: &str) -> Self {
+            FunctionTest {
+                input: input.to_string(),
+                program: init(input),
+            }
+        }
+    }
+
+    #[test]
+    fn test_func_objects() {
+        let case = FunctionTest::new("func(x, y) { x + 1; (x + 3); x + y };");
+        let value = eval_fresh(&case.program).unwrap();
+
+        assert!(matches!(value, Object::Function(..)));
+        assert_eq!(value.inspect(), "func(x, y) { (x + 1); (x + 3); (x + y) }");
+        assert_eq!(value.body().unwrap(), "{ (x + 1); (x + 3); (x + y) }");
+        assert_eq!(value.params().unwrap(), "(x, y)");
+        assert_eq!(value.env().unwrap(), "");
+    }
+
+    /*
+     * TestFunctionCall
+     */
+    struct TestFunctionCall {
+        input: String,
+        expected: i32,
+        program: Program,
+    }
+
+    impl TestFunctionCall {
+        fn new(input: &str, expected: i32) -> Self {
+            TestFunctionCall {
+                input: input.to_string(),
+                expected,
+                program: init(input),
+            }
+        }
+    }
+
+    #[test]
+    fn test_func_call() {
+        let cases = vec![
+            TestFunctionCall::new("let id = func(x) { x; }; id(1);", 1),
+            TestFunctionCall::new("let add = func(a,b) { a+b; }; add(1,2);", 3),
+            TestFunctionCall::new("let add = func(a,b) { a+b; }; add(1, add(1,2));", 4),
+            TestFunctionCall::new("func(x) { x; }(0);", 0),
+        ];
+
+        for case in cases {
+            let value = eval_fresh(&case.program).unwrap();
+            assert_eq!(value.as_int().unwrap(), case.expected)
+        }
+    }
+
+    #[test]
+    fn test_closure() {
+        let program = init(
+            "let newAdder = func(x) {
+func(y) { x + y };
+};
+let addTwo = newAdder(2);
+addTwo(2);",
+        );
+        let value = eval_fresh(&program).unwrap();
+
+        assert!(matches!(value, Object::Integer(..)));
+        assert!(matches!(value.as_int().unwrap(), 4));
     }
 }

@@ -1,6 +1,5 @@
-use crate::ast::{Body, Node, Params, Statement};
+use crate::ast::{Body, Expression, Node, Params, Statement};
 use core::cmp::PartialEq;
-use std::rc::Rc;
 use std::{collections::HashMap, ops::Deref};
 
 /*
@@ -24,7 +23,7 @@ pub enum Object {
     Integer(i32),
     Boolean(bool),
     Return(Box<Self>),
-    // Function(Params, Body, Environment),
+    Function(Vec<Expression>, Statement, Environment),
 }
 
 impl PartialEq for Object {
@@ -57,14 +56,16 @@ impl PartialEq for Object {
                 } else {
                     false
                 }
-            } // Object::Function(f1, _, _) => {
-              //     // TODO
-              //     // if let Object::Function(f2, _, _) = other {
-              //     //     f1.token_literal() == f2.token_literal()
-              //     // } else {
-              //     //     false
-              //     // }
-              //     false
+            }
+            Object::Function(f1, _, _) => {
+                // TODO
+                // if let Object::Function(f2, _, _) = other {
+                //     f1.token_literal() == f2.token_literal()
+                // } else {
+                //     false
+                // }
+                false
+            }
         }
     }
 }
@@ -78,7 +79,7 @@ impl Object {
             Object::Integer(_) => Type::INTEGER,
             Object::Boolean(_) => Type::BOOLEAN,
             Object::Return(_) => Type::RETURN,
-            // Object::Function(..) => Type::FUNCTION,
+            Object::Function(..) => Type::FUNCTION,
         }
     }
 
@@ -88,24 +89,53 @@ impl Object {
             Object::Integer(i) => i.to_string(),
             Object::Boolean(b) => b.to_string(),
             Object::Return(v) => v.inspect(),
-            // Object::Function(t, body, env) => {
-            //     let mut s = String::new();
-            //     s.push('\n');
-
-            //     s.push_str(&env.to_str());
-
-            //     if let Statement::Block(t, statements) = &**body {
-            //         for statement in statements.iter() {
-            //             s.push_str(&statement.to_string());
-            //         }
-            //     };
-
-            //     s
+            Object::Function(params, body, env) => {
+                format!(
+                    "func({}) {{ {} }}",
+                    params
+                        .iter()
+                        .map(|x| x.to_string())
+                        .collect::<Vec<String>>()
+                        .join(", "),
+                    body.to_string(),
+                    // env.to_str()
+                )
+            }
         }
     }
 
     /*
-     * Nulls
+     * @FUNCTION_HELPERS
+     */
+    pub fn body(&self) -> Option<String> {
+        match self {
+            Object::Function(_, b, _) => Some(format!("{{ {} }}", b.to_string())),
+            _ => None,
+        }
+    }
+
+    pub fn params(&self) -> Option<String> {
+        match self {
+            Object::Function(p, _, _) => Some(format!(
+                "({})",
+                p.iter()
+                    .map(|x| x.to_string())
+                    .collect::<Vec<String>>()
+                    .join(", "),
+            )),
+            _ => None,
+        }
+    }
+
+    pub fn env(&self) -> Option<String> {
+        match self {
+            Object::Function(_, _, e) => Some(e.inspect()),
+            _ => None,
+        }
+    }
+
+    /*
+     * @NULL_HELPERS
      */
     pub fn is_null(&self) -> bool {
         *self == Object::Null
@@ -115,15 +145,13 @@ impl Object {
      * Integers
      */
     pub fn as_int(&self) -> Option<i32> {
-        match &self {
+        match self {
             Object::Integer(i) => Some(*i),
             _ => None,
         }
     }
 
     /*
-     * Booleans
-     *
      * Booleans in this language are truthy: Every value can be coerced into
      * a bool, and values are false:
      * Boolean(false)
@@ -146,28 +174,38 @@ impl Object {
             Self::Integer(i) => Self::Integer(*i),
             Self::Boolean(b) => Self::Boolean(*b),
             Self::Return(obj) => Self::Null, // TODO This is a quick fix. Not sure what to do.
-                                             // Self::Function(n, b, e) => Self::Null, // TODO This is a quick fix. Not sure what to do.
+            Self::Function(params, body, env) => {
+                Self::Function(params.clone(), body.clone(), env.clone())
+            }
         }
     }
 }
 
-#[derive(Debug)]
-pub struct Environment<'a>(HashMap<String, Object>, Option<&'a Self>);
+use std::cell::RefCell;
+use std::rc::Rc;
+#[derive(Debug, Clone)]
+pub struct Environment(
+    Rc<RefCell<HashMap<String, Object>>>,
+    Option<Rc<Environment>>,
+);
 
-impl<'a> Environment<'a> {
+impl Environment {
     pub fn global() -> Self {
-        Environment(HashMap::new(), None)
+        Environment(Rc::new(RefCell::new(HashMap::new())), None)
     }
 
-    pub fn local(other: &'a Self) -> Self {
-        Environment(HashMap::new(), Some(other))
+    pub fn local(other: &Rc<Self>) -> Self {
+        Environment(
+            Rc::new(RefCell::new(HashMap::new())),
+            Some(Rc::clone(other)),
+        )
     }
 
-    pub fn to_str(&self) -> String {
+    pub fn inspect(&self) -> String {
         let mut msg = String::new();
-        for (name, obj) in &self.0 {
+        for (name, obj) in self.0.borrow().iter() {
             msg.push_str(
-                format!("{}: {:?}\n", name.as_str(), *obj)
+                format!("{}: {}\n", name.as_str(), obj.inspect())
                     .to_owned()
                     .as_str(),
             )
@@ -175,15 +213,16 @@ impl<'a> Environment<'a> {
         msg
     }
 
-    pub fn add(&mut self, name: &str, obj: &Object) {
-        self.0.insert(name.to_string(), obj.copy());
+    pub fn add(&self, name: &str, obj: &Object) {
+        self.0.borrow_mut().insert(name.to_string(), obj.copy());
     }
 
-    pub fn get(&self, name: &String) -> Option<&Object> {
-        let obj = self.0.get(name);
+    pub fn get(&self, name: &String) -> Option<Object> {
+        let binding = self.0.borrow();
+        let obj = binding.get(name);
         match obj {
-            Some(obj) => Some(obj),
-            None => match self.1 {
+            Some(x) => Some(x.copy()),
+            None => match &self.1 {
                 Some(env) => env.get(name),
                 None => None,
             },
