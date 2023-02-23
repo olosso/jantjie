@@ -5,6 +5,7 @@ use std::fmt;
 use crate::ast::*;
 use crate::object::*;
 use crate::token::{Token, TokenType};
+use std::collections::HashMap;
 use std::rc::Rc;
 
 pub fn eval(program: &Program, global: &Rc<Environment>) -> Result<Object, EvalError> {
@@ -84,10 +85,15 @@ fn eval_call(
     args: &[Expression],
     env: &Rc<Environment>,
 ) -> Result<Object, EvalError> {
+    let args = eval_expressions(args, env)?;
+    if Builtins::names().contains(&ident.token_literal().as_str()) {
+        if let Object::Builtin(s, f) = Object::builtins(ident.token_literal().as_str()).unwrap() {
+            return f(args);
+        }
+    }
+
     let func = eval_expression(ident, env)?;
     assert!(matches!(func, Object::Function(..)));
-    let args = eval_expressions(args, env)?;
-
     apply_function(&func, &args)
 }
 

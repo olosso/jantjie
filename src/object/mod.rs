@@ -1,4 +1,5 @@
 use crate::ast::{Body, Expression, Node, Params, Statement};
+use crate::evaluator::EvalError;
 use core::cmp::PartialEq;
 use std::{collections::HashMap, ops::Deref};
 
@@ -13,6 +14,7 @@ pub enum Type {
     BOOLEAN,
     RETURN,
     FUNCTION,
+    BUILTIN,
 }
 
 /*
@@ -26,6 +28,7 @@ pub enum Object {
     Boolean(bool),
     Return(Box<Self>),
     Function(Vec<Expression>, Statement, Environment),
+    Builtin(&'static str, fn(Vec<Self>) -> Result<Self, EvalError>),
 }
 
 impl PartialEq for Object {
@@ -75,6 +78,13 @@ impl PartialEq for Object {
                 // }
                 false
             }
+            Object::Builtin(a, _) => {
+                if let Object::Builtin(b, _) = other {
+                    a == b
+                } else {
+                    false
+                }
+            }
         }
     }
 }
@@ -90,6 +100,7 @@ impl Object {
             Object::Boolean(_) => Type::BOOLEAN,
             Object::Return(_) => Type::RETURN,
             Object::Function(..) => Type::FUNCTION,
+            Object::Builtin(..) => Type::BUILTIN,
         }
     }
 
@@ -112,6 +123,7 @@ impl Object {
                     // env.to_str()
                 )
             }
+            Object::Builtin(s, f) => s.to_string(),
         }
     }
 
@@ -189,7 +201,37 @@ impl Object {
             Self::Function(params, body, env) => {
                 Self::Function(params.clone(), body.clone(), env.clone())
             }
+            Self::Builtin(s, f) => panic!("Not allowed to copy Builtins"),
         }
+    }
+
+    pub fn builtins(name: &str) -> Option<Object> {
+        match name {
+            "len" => Some(Object::Builtin(Builtins::LEN, Builtins::len)),
+            _ => None,
+        }
+    }
+}
+
+pub struct Builtins;
+impl Builtins {
+    const LEN: &str = "len";
+
+    pub fn len(o: Vec<Object>) -> Result<Object, EvalError> {
+        if !(o.len() == 1 && matches!(o[0], Object::String(..))) {
+            return Err(EvalError::new("Bad arguments to len".to_string()));
+        };
+        let o = &o[0];
+
+        if let Object::String(s) = o {
+            Ok(Object::Integer(s.len() as i32))
+        } else {
+            panic!("This shouldn't happen.")
+        }
+    }
+
+    pub fn names() -> Vec<&'static str> {
+        vec![Builtins::LEN]
     }
 }
 

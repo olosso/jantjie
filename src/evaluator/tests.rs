@@ -276,6 +276,8 @@ return 1;
             EvalErrorTest::new("let a = 1; a+b", "Evaluation error"),
             EvalErrorTest::new("let a = 1; a+b", "Evaluation error"),
             EvalErrorTest::new("if (true) { let x + 2; }; x;", "Evaluation error"),
+            EvalErrorTest::new("len(true)", "Bad arguments"),
+            EvalErrorTest::new("len(1)", "Bad arguments"),
         ];
 
         for case in cases {
@@ -393,5 +395,20 @@ addTwo(2);",
 
         assert!(matches!(value, Object::Integer(..)));
         assert!(matches!(value.as_int().unwrap(), 4));
+    }
+
+    #[test]
+    fn test_builtin_len() {
+        let cases = vec![
+            IntegerEvalTest::new(r#"len("Hello")"#, 5),
+            IntegerEvalTest::new(r#"len("Hello paganini")"#, 14),
+            IntegerEvalTest::new(r#"len("")"#, 0),
+            IntegerEvalTest::new(r#"len(" ")"#, 1),
+        ];
+
+        for case in cases {
+            let value = eval_fresh(&case.program).unwrap();
+            test_integer_object(value, case.expected);
+        }
     }
 }
