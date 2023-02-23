@@ -152,6 +152,27 @@ impl Lexer {
                     _ => return Token::new(TokenType::Bang, "!".to_string()),
                 }
             }
+
+            '"' => {
+                let mut string = String::new();
+
+                while self.peek().filter(|x| *x != '"').is_some() {
+                    if self.peek().filter(|x| *x == '\\').is_some() {
+                        self.read_char();
+                        if self.peek().filter(|x| *x == '"').is_some() {
+                            self.read_char();
+                        }
+                        string.push(self.ch);
+                        continue;
+                    }
+                    self.read_char();
+                    string.push(self.ch);
+                }
+                // Get past the quotation mark
+                self.read_char();
+                self.read_char();
+                return Token::new(TokenType::String, string);
+            }
             ';' => Token::new(TokenType::Semicolon, self.ch.to_string()),
             '(' => Token::new(TokenType::LParen, self.ch.to_string()),
             ')' => Token::new(TokenType::RParen, self.ch.to_string()),
@@ -295,9 +316,8 @@ mod token_tests {
     }
 
     #[test]
-    //#[ignore]
     fn test_lexing_keywords_let_and_func() {
-        let input = "let five = 5;
+        let input = r#"let five = 5;
 
 let ten = 10;
 
@@ -305,7 +325,12 @@ let add_two_numbers_ = func(x, y) {
 x + y;
 }
 
-let result = add(five, ten);";
+let result = add(five, ten);
+"elise"
+"fur elise"
+"eine \"kleine\" nachtmusik"
+"\"eine kleine nachtmusik\""
+"#;
 
         // It works, don't @ me.
         let expected = vec![
@@ -448,6 +473,22 @@ let result = add(five, ten);";
             Token {
                 token_type: TokenType::Semicolon,
                 literal: ";".to_string(),
+            },
+            Token {
+                token_type: TokenType::String,
+                literal: "elise".to_string(),
+            },
+            Token {
+                token_type: TokenType::String,
+                literal: "fur elise".to_string(),
+            },
+            Token {
+                token_type: TokenType::String,
+                literal: r#"eine "kleine" nachtmusik"#.to_string(),
+            },
+            Token {
+                token_type: TokenType::String,
+                literal: r#""eine kleine nachtmusik""#.to_string(),
             },
             Token {
                 token_type: TokenType::EOF,

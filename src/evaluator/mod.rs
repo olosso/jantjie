@@ -59,6 +59,7 @@ fn eval_expression(expr: &Expression, env: &Rc<Environment>) -> Result<Object, E
     match expr {
         Expression::Bool(_, b) => Ok(Object::Boolean(*b)),
         Expression::IntegerLiteral(_, i) => Ok(Object::Integer(*i)),
+        Expression::StringLiteral(_, s) => Ok(Object::String(s.to_owned())),
         Expression::Prefix(_, op, expr) => eval_prefix(expr, op, env),
         Expression::Infix(_, left, op, right) => eval_infix(left, op, right, env),
         Expression::Identifier(_, ident) => eval_identifier(ident, env),
@@ -153,7 +154,7 @@ fn bang_error(expr: &Expression) -> EvalError {
 }
 
 /*
- * Infix
+ * @INFIX
  */
 pub fn eval_infix(
     left: &Expression,
@@ -182,6 +183,16 @@ pub fn eval_infix(
                 Ok(Object::Null)
             }
         }
+        Object::String(a) => {
+            if let Object::String(b) = right {
+                eval_string_infix(a, op, b)
+            } else {
+                Err(EvalError::new(format!(
+                    "Expected right operator to be a String, but got {:?}.",
+                    right.obtype()
+                )))
+            }
+        }
         _ => todo!(),
     }
 }
@@ -201,6 +212,22 @@ fn eval_integer_infix(a: i32, op: &str, b: i32) -> Result<Object, EvalError> {
         _ => {
             return Err(EvalError(
                 format!("Operator \"{op}\" not supported for integers"),
+                None,
+            ))
+        }
+    })
+}
+
+fn eval_string_infix(a: String, op: &str, b: String) -> Result<Object, EvalError> {
+    Ok(match op {
+        "+" => {
+            let mut s = a;
+            s.push_str(b.as_str());
+            Object::String(s)
+        }
+        _ => {
+            return Err(EvalError(
+                format!("Operator \"{op}\" not supported for Strings"),
                 None,
             ))
         }

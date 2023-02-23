@@ -9,6 +9,7 @@ pub enum TokenType {
     // Identifiers + literals
     Ident,
     Int,
+    String,
 
     // Operators
     Assign,
@@ -57,6 +58,7 @@ impl TokenType {
 
             TokenType::Ident => "IDENT",
             TokenType::Int => "INT",
+            TokenType::String => "STRING",
 
             TokenType::Assign => "=",
             TokenType::Plus => "+",

@@ -79,6 +79,7 @@ impl Parser {
         prefix_fns.insert(TokenType::True, Self::parse_bool);
         prefix_fns.insert(TokenType::False, Self::parse_bool);
         prefix_fns.insert(TokenType::Int, Self::parse_integer_literal);
+        prefix_fns.insert(TokenType::String, Self::parse_string_literal);
         prefix_fns.insert(TokenType::Bang, Self::parse_prefix_expression);
         prefix_fns.insert(TokenType::Minus, Self::parse_prefix_expression);
         prefix_fns.insert(TokenType::LParen, Self::parse_grouped_expression);
@@ -240,6 +241,7 @@ impl Parser {
     /// <expression>;
     fn parse_expression_statement(&mut self) -> Result<Statement, ParseError> {
         if !(self.cur_tokentype_is(TokenType::Int)
+            || self.cur_tokentype_is(TokenType::String)
             || self.cur_tokentype_is(TokenType::Ident)
             || self.cur_tokentype_is(TokenType::Minus)
             || self.cur_tokentype_is(TokenType::Bang)
@@ -380,6 +382,20 @@ impl Parser {
             .expect("Failed to parse assumed Integer Token");
 
         Ok(Expression::IntegerLiteral(self.current_token.clone(), int))
+    }
+
+    /// Token { String, "hello" } => StringLiteral { Token { String, "hello" }, "hello" }
+    /// Note that this is a prefix function -> It can be a leaf in the AST.
+    fn parse_string_literal(&mut self) -> Result<Expression, ParseError> {
+        assert!(self.cur_tokentype_is(TokenType::String));
+
+        let current_token = self.current_token.clone();
+        let string: String = current_token.literal;
+
+        Ok(Expression::StringLiteral(
+            self.current_token.clone(),
+            string,
+        ))
     }
 
     /// This is only called from parse_expression.

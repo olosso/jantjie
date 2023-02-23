@@ -9,6 +9,7 @@ use std::{collections::HashMap, ops::Deref};
 pub enum Type {
     NULL,
     INTEGER,
+    STRING,
     BOOLEAN,
     RETURN,
     FUNCTION,
@@ -21,6 +22,7 @@ pub enum Type {
 pub enum Object {
     Null,
     Integer(i32),
+    String(String),
     Boolean(bool),
     Return(Box<Self>),
     Function(Vec<Expression>, Statement, Environment),
@@ -38,6 +40,13 @@ impl PartialEq for Object {
             }
             Object::Integer(a) => {
                 if let Object::Integer(b) = other {
+                    a == b
+                } else {
+                    false
+                }
+            }
+            Object::String(a) => {
+                if let Object::String(b) = other {
                     a == b
                 } else {
                     false
@@ -77,6 +86,7 @@ impl Object {
         match self {
             Object::Null => Type::NULL,
             Object::Integer(_) => Type::INTEGER,
+            Object::String(_) => Type::STRING,
             Object::Boolean(_) => Type::BOOLEAN,
             Object::Return(_) => Type::RETURN,
             Object::Function(..) => Type::FUNCTION,
@@ -87,6 +97,7 @@ impl Object {
         match self {
             Object::Null => "null".to_string(),
             Object::Integer(i) => i.to_string(),
+            Object::String(s) => s.to_owned(),
             Object::Boolean(b) => b.to_string(),
             Object::Return(v) => v.inspect(),
             Object::Function(params, body, env) => {
@@ -172,6 +183,7 @@ impl Object {
         match self {
             Self::Null => Self::Null,
             Self::Integer(i) => Self::Integer(*i),
+            Self::String(s) => Self::String(s.to_owned()),
             Self::Boolean(b) => Self::Boolean(*b),
             Self::Return(obj) => Self::Null, // TODO This is a quick fix. Not sure what to do.
             Self::Function(params, body, env) => {

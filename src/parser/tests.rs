@@ -30,6 +30,27 @@ mod parser_tests {
     }
 
     #[test]
+    fn test_parse_let_statement2() {
+        let program = init(r#"let x = "hello world";"#);
+
+        assert_eq!(
+            program.statements.len(),
+            1,
+            "Expected program to have 1 statement, but received {:?}",
+            program.statements.len()
+        );
+
+        let parsed = &program.statements[0];
+        let expr = parsed.expr().unwrap();
+
+        assert!(matches!(parsed, Statement::Let(_, _, _)));
+        assert_eq!(parsed.token().unwrap().literal, "let");
+        assert_eq!(parsed.token().unwrap().token_type, TokenType::Let);
+        assert_eq!(expr.token().token_type, TokenType::String);
+        assert_eq!(*expr.string().unwrap(), String::from("hello world"));
+    }
+
+    #[test]
     #[should_panic(expected = "Let statement not followed by an identifier")]
     fn test_parse_let_statement_without_identifier_should_panic() {
         let malformed_input = "let = 1;".to_string();

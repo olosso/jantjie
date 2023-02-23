@@ -28,6 +28,7 @@ type Arguments = Vec<Expression>;
 pub enum Expression {
     Bool(Token, bool),                   // true,  Token = Token {True, "true"}
     IntegerLiteral(Token, i32),          // 42,    Token = Token {Int, 42}
+    StringLiteral(Token, String),        // 42,    Token = Token {Int, 42}
     Identifier(Token, String),           // foo,   Token = Token {Ident, "foo"}
     Prefix(Token, Operator, Right),      // !true, Token = Token {Bang, "!"}
     Infix(Token, Left, Operator, Right), // a + b, Token = Token {Plus, "+"}, Operator = "+"
@@ -68,6 +69,14 @@ impl Expression {
     pub fn int(&self) -> Option<i32> {
         if let Expression::IntegerLiteral(_, i) = self {
             Some(*i)
+        } else {
+            None
+        }
+    }
+
+    pub fn string(&self) -> Option<&String> {
+        if let Expression::StringLiteral(_, s) = self {
+            Some(s)
         } else {
             None
         }
@@ -210,14 +219,15 @@ impl Node for Expression {
 
     fn token(&self) -> &Token {
         match self {
-            Expression::Bool(t, ..) => &t,
-            Expression::Identifier(t, ..) => &t,
-            Expression::IntegerLiteral(t, ..) => &t,
-            Expression::Prefix(t, ..) => &t,
-            Expression::Infix(t, ..) => &t,
-            Expression::If(t, ..) => &t,
-            Expression::Func(t, ..) => &t,
-            Expression::Call(t, ..) => &t,
+            Expression::Bool(t, ..) => t,
+            Expression::Identifier(t, ..) => t,
+            Expression::IntegerLiteral(t, ..) => t,
+            Expression::StringLiteral(t, ..) => t,
+            Expression::Prefix(t, ..) => t,
+            Expression::Infix(t, ..) => t,
+            Expression::If(t, ..) => t,
+            Expression::Func(t, ..) => t,
+            Expression::Call(t, ..) => t,
         }
     }
 
