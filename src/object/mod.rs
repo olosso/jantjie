@@ -280,6 +280,7 @@ impl Object {
     pub fn builtins(name: &str) -> Option<Object> {
         match name {
             "len" => Some(Object::Builtin(Builtins::LEN, Builtins::len)),
+            "puts" => Some(Object::Builtin(Builtins::LEN, Builtins::puts)),
             _ => None,
         }
     }
@@ -288,12 +289,13 @@ impl Object {
 pub struct Builtins;
 impl Builtins {
     const LEN: &str = "len";
+    const PUTS: &str = "puts";
 
-    pub fn len(o: Vec<Object>) -> Result<Object, EvalError> {
-        if !(o.len() == 1 && matches!(o[0], Object::String(..))) {
+    pub fn len(os: Vec<Object>) -> Result<Object, EvalError> {
+        if !(os.len() == 1 && matches!(os[0], Object::String(..))) {
             return Err(EvalError::new("Bad arguments to len".to_string()));
         };
-        let o = &o[0];
+        let o = &os[0];
 
         if let Object::String(s) = o {
             Ok(Object::Integer(s.len() as i32))
@@ -302,8 +304,15 @@ impl Builtins {
         }
     }
 
+    pub fn puts(os: Vec<Object>) -> Result<Object, EvalError> {
+        for o in os {
+            println!("{}", o.inspect())
+        }
+        Ok(Object::Null)
+    }
+
     pub fn names() -> Vec<&'static str> {
-        vec![Builtins::LEN]
+        vec![Builtins::LEN, Builtins::PUTS]
     }
 }
 
