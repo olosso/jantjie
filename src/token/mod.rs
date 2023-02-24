@@ -1,6 +1,7 @@
 use crate::parser::Precedence;
+use std::fmt;
 
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
 pub enum TokenType {
     Illegal,
     EOF,
@@ -31,6 +32,8 @@ pub enum TokenType {
 
     LParen,
     RParen,
+    LBracket,
+    RBracket,
     LBrace,
     RBrace,
 
@@ -78,6 +81,8 @@ impl TokenType {
 
             TokenType::LParen => "(",
             TokenType::RParen => ")",
+            TokenType::LBracket => "[",
+            TokenType::RBracket => "]",
             TokenType::LBrace => "{",
             TokenType::RBrace => "}",
 
@@ -105,6 +110,12 @@ impl TokenType {
 
     pub fn is_statement(&self) -> bool {
         matches!(&self, TokenType::Let | TokenType::Return)
+    }
+}
+
+impl fmt::Display for TokenType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.string())
     }
 }
 

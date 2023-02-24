@@ -475,6 +475,7 @@ mod parser_tests {
                 "add(a + b + c * d / f + g)",
                 "add((((a + b) + ((c * d) / f)) + g))",
             ),
+            PrecedenceTest::new("[1+1, 2*3, 10]", "[(1 + 1), (2 * 3), 10]"),
         ];
 
         for test in tests.into_iter() {
@@ -486,7 +487,14 @@ mod parser_tests {
     #[should_panic(expected = "Left Parethesis never closed")]
     fn test_parenthesis_panic() {
         PrecedenceTest::new("-(1 + 1", "(-(1 + 1))").test();
-        PrecedenceTest::new("1 + (2 + 3 * 4", "(1 + ((2 + 3) * 4))");
+        PrecedenceTest::new("1 + (2 + 3 * 4", "(1 + ((2 + 3) * 4))").test();
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_parenthesis_panic2() {
+        PrecedenceTest::new("[1,2,3)", "").test();
+        PrecedenceTest::new("(1,1,3]", "").test();
     }
 
     /*

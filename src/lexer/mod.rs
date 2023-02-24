@@ -176,6 +176,8 @@ impl Lexer {
             ';' => Token::new(TokenType::Semicolon, self.ch.to_string()),
             '(' => Token::new(TokenType::LParen, self.ch.to_string()),
             ')' => Token::new(TokenType::RParen, self.ch.to_string()),
+            '[' => Token::new(TokenType::LBracket, self.ch.to_string()),
+            ']' => Token::new(TokenType::RBracket, self.ch.to_string()),
             '{' => Token::new(TokenType::LBrace, self.ch.to_string()),
             '}' => Token::new(TokenType::RBrace, self.ch.to_string()),
             ',' => Token::new(TokenType::Comma, self.ch.to_string()),

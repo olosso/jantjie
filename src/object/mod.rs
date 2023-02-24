@@ -6,12 +6,13 @@ use std::{collections::HashMap, ops::Deref};
 /*
  * @TYPE
  */
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Type {
     NULL,
     INTEGER,
     STRING,
     BOOLEAN,
+    ARRAY,
     RETURN,
     FUNCTION,
     BUILTIN,
@@ -26,6 +27,7 @@ pub enum Object {
     Integer(i32),
     String(String),
     Boolean(bool),
+    Array(Vec<Self>),
     Return(Box<Self>),
     Function(Vec<Expression>, Statement, Environment),
     Builtin(&'static str, fn(Vec<Self>) -> Result<Self, EvalError>),
@@ -85,6 +87,13 @@ impl PartialEq for Object {
                     false
                 }
             }
+            Object::Array(a) => {
+                if let Object::Array(b) = other {
+                    a.iter().zip(b).all(|(a_, b_)| a_ == b_)
+                } else {
+                    false
+                }
+            }
         }
     }
 }
@@ -98,6 +107,7 @@ impl Object {
             Object::Integer(_) => Type::INTEGER,
             Object::String(_) => Type::STRING,
             Object::Boolean(_) => Type::BOOLEAN,
+            Object::Array(_) => Type::ARRAY,
             Object::Return(_) => Type::RETURN,
             Object::Function(..) => Type::FUNCTION,
             Object::Builtin(..) => Type::BUILTIN,
@@ -110,6 +120,15 @@ impl Object {
             Object::Integer(i) => i.to_string(),
             Object::String(s) => s.to_owned(),
             Object::Boolean(b) => b.to_string(),
+            Object::Array(a) => {
+                format!(
+                    "[{}]",
+                    a.iter()
+                        .map(|x| x.inspect())
+                        .collect::<Vec<String>>()
+                        .join(", "),
+                )
+            }
             Object::Return(v) => v.inspect(),
             Object::Function(params, body, env) => {
                 format!(
@@ -202,6 +221,13 @@ impl Object {
                 Self::Function(params.clone(), body.clone(), env.clone())
             }
             Self::Builtin(s, f) => panic!("Not allowed to copy Builtins"),
+            Self::Array(a) => {
+                let mut b = vec![];
+                for elem in a {
+                    b.push(elem.copy())
+                }
+                Self::Array(b)
+            }
         }
     }
 

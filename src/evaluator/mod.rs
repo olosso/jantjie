@@ -61,6 +61,7 @@ fn eval_expression(expr: &Expression, env: &Rc<Environment>) -> Result<Object, E
         Expression::Bool(_, b) => Ok(Object::Boolean(*b)),
         Expression::IntegerLiteral(_, i) => Ok(Object::Integer(*i)),
         Expression::StringLiteral(_, s) => Ok(Object::String(s.to_owned())),
+        Expression::Array(_, exprs) => eval_array(exprs, env),
         Expression::Prefix(_, op, expr) => eval_prefix(expr, op, env),
         Expression::Infix(_, left, op, right) => eval_infix(left, op, right, env),
         Expression::Identifier(_, ident) => eval_identifier(ident, env),
@@ -78,6 +79,11 @@ fn eval_expressions(exprs: &[Expression], env: &Rc<Environment>) -> Result<Vec<O
     }
 
     Ok(results)
+}
+
+fn eval_array(exprs: &[Expression], env: &Rc<Environment>) -> Result<Object, EvalError> {
+    let exprs = eval_expressions(exprs, env)?;
+    Ok(Object::Array(exprs))
 }
 
 fn eval_call(

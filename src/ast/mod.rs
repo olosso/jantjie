@@ -31,6 +31,7 @@ pub enum Expression {
     StringLiteral(Token, String),        // 42,    Token = Token {Int, 42}
     Identifier(Token, String),           // foo,   Token = Token {Ident, "foo"}
     Prefix(Token, Operator, Right),      // !true, Token = Token {Bang, "!"}
+    Array(Token, Arguments),             // !true, Token = Token {Bang, "!"}
     Infix(Token, Left, Operator, Right), // a + b, Token = Token {Plus, "+"}, Operator = "+"
     /*
      * if (<expression>) { <statement[]> } else { <statement[]> }
@@ -153,7 +154,7 @@ impl Expression {
     }
 
     pub fn args(&self) -> Option<&Arguments> {
-        if let Expression::Call(_, _, a) = self {
+        if let Expression::Call(_, _, a) | Expression::Array(_, a) = self {
             Some(a)
         } else {
             None
@@ -167,6 +168,7 @@ impl Node for Expression {
             Expression::Bool(t, _) => t.literal.clone(),
             Expression::Identifier(_, s) => s.to_string(),
             Expression::IntegerLiteral(t, _) => t.literal.clone(),
+            Expression::StringLiteral(_, s) => s.clone(),
             Expression::Prefix(_, o, r) => {
                 format!("({}{})", o, r.to_string())
             }
@@ -213,7 +215,15 @@ impl Node for Expression {
                         .join(", "),
                 )
             }
-            _ => panic!(),
+            Expression::Array(t, a) => {
+                format!(
+                    "[{}]",
+                    a.iter()
+                        .map(|x| x.to_string())
+                        .collect::<Vec<String>>()
+                        .join(", ")
+                )
+            }
         }
     }
 
@@ -223,6 +233,7 @@ impl Node for Expression {
             Expression::Identifier(t, ..) => t,
             Expression::IntegerLiteral(t, ..) => t,
             Expression::StringLiteral(t, ..) => t,
+            Expression::Array(t, ..) => t,
             Expression::Prefix(t, ..) => t,
             Expression::Infix(t, ..) => t,
             Expression::If(t, ..) => t,
@@ -236,6 +247,7 @@ impl Node for Expression {
             Expression::Bool(t, ..) => t.literal.clone(),
             Expression::Identifier(t, ..) => t.literal.clone(),
             Expression::IntegerLiteral(t, ..) => t.literal.clone(),
+            Expression::Array(t, ..) => t.literal.clone(),
             Expression::Prefix(t, ..) => t.literal.clone(),
             Expression::Infix(t, ..) => t.literal.clone(),
             Expression::If(t, ..) => t.literal.clone(),

@@ -29,6 +29,7 @@ pub enum Precedence {
     PRODUCT,     // *
     PREFIX,      // -X or !X
     CALL,        // foo(X)
+    INDEX,       // [...][0]
 }
 
 pub struct Parser {
@@ -83,6 +84,7 @@ impl Parser {
         prefix_fns.insert(TokenType::Bang, Self::parse_prefix_expression);
         prefix_fns.insert(TokenType::Minus, Self::parse_prefix_expression);
         prefix_fns.insert(TokenType::LParen, Self::parse_grouped_expression);
+        prefix_fns.insert(TokenType::LBracket, Self::parse_bracket);
         prefix_fns.insert(TokenType::If, Self::parse_if_expression);
         prefix_fns.insert(TokenType::Function, Self::parse_func_expression);
 
@@ -249,7 +251,8 @@ impl Parser {
             || self.cur_tokentype_is(TokenType::False)
             || self.cur_tokentype_is(TokenType::If)
             || self.cur_tokentype_is(TokenType::Function)
-            || self.cur_tokentype_is(TokenType::LParen))
+            || self.cur_tokentype_is(TokenType::LParen)
+            || self.cur_tokentype_is(TokenType::LBracket))
         {
             return Err(PE::new_t(
                 "First token in Expression was a {:?}, this is not supported.".to_string(),
@@ -516,11 +519,19 @@ impl Parser {
     }
 
     fn parse_function_parameters(&mut self) -> Result<Vec<Expression>, ParseError> {
-        assert!(self.cur_tokentype_is(TokenType::LParen));
+        assert!(
+            self.cur_tokentype_is(TokenType::LParen) || self.cur_tokentype_is(TokenType::LBracket)
+        );
+        let me = self.current_token.token_type;
+        let other = if me == TokenType::LParen {
+            TokenType::RParen
+        } else {
+            TokenType::RBracket
+        };
 
         let mut params = vec![];
 
-        if self.peek_tokentype_is(TokenType::RParen) {
+        if self.peek_tokentype_is(other) {
             self.next_token();
             return Ok(params);
         }
@@ -534,13 +545,25 @@ impl Parser {
             params.push(self.parse_identifier()?);
         }
 
-        if !self.expect_peek(TokenType::RParen) {
-            return Err(PE::new(
-                "Expected RParen to close function parameter list, but got {:?}".to_string(),
-            ));
+        if !self.expect_peek(other) {
+            return Err(PE::new(format!(
+                "Expected {} to be closed with {}, but got {}",
+                me, other, self.peek_token.token_type,
+            )));
         }
 
         Ok(params)
+    }
+
+    fn parse_bracket(&mut self) -> Result<Expression, ParseError> {
+        assert!(self.cur_tokentype_is(TokenType::LBracket));
+
+        let bracket_token = self.current_token.clone();
+
+        let exprs = self.parse_call_args()?;
+        assert!(self.cur_tokentype_is(TokenType::RBracket));
+
+        Ok(Expression::Array(bracket_token, exprs))
     }
 
     fn parse_infix_expression(&mut self, left: Expression) -> Result<Expression, ParseError> {
@@ -595,11 +618,19 @@ impl Parser {
     }
 
     fn parse_call_args(&mut self) -> Result<Vec<Expression>, ParseError> {
-        assert!(self.cur_tokentype_is(TokenType::LParen));
+        assert!(
+            self.cur_tokentype_is(TokenType::LParen) || self.cur_tokentype_is(TokenType::LBracket)
+        );
+        let me = self.current_token.token_type;
+        let other = if me == TokenType::LParen {
+            TokenType::RParen
+        } else {
+            TokenType::RBracket
+        };
 
         let mut args = vec![];
 
-        if self.peek_tokentype_is(TokenType::RParen) {
+        if self.peek_tokentype_is(other) {
             self.next_token();
             return Ok(args);
         }
@@ -613,10 +644,11 @@ impl Parser {
             args.push(self.parse_expression(Precedence::LOWEST)?);
         }
 
-        if !self.expect_peek(TokenType::RParen) {
-            return Err(PE::new(
-                "Expected RParen to close function call, but got {:?}".to_string(),
-            ));
+        if !self.expect_peek(other) {
+            return Err(PE::new(format!(
+                "Expected {me} to be closed with {other}, but got {}",
+                self.peek_token.token_type
+            )));
         }
 
         Ok(args)
