@@ -24,6 +24,8 @@ type Alternative = Box<Statement>;
 pub type Body = Box<Statement>;
 pub type Params = Vec<Expression>;
 type Arguments = Vec<Expression>;
+type Keys = Vec<Expression>;
+type Values = Vec<Expression>;
 #[derive(Debug, Clone)]
 pub enum Expression {
     Bool(Token, bool),                   // true,  Token = Token {True, "true"}
@@ -31,7 +33,8 @@ pub enum Expression {
     StringLiteral(Token, String),        // 42,    Token = Token {Int, 42}
     Identifier(Token, String),           // foo,   Token = Token {Ident, "foo"}
     Prefix(Token, Operator, Right),      // !true, Token = Token {Bang, "!"}
-    Array(Token, Arguments),             // !true, Token = Token {Bang, "!"}
+    Array(Token, Arguments),             // !true, Token = Token {LBracket, "["}
+    HashMap(Token, Keys, Values),        // !true, Token = Token {LBrace, "{"}
     Infix(Token, Left, Operator, Right), // a + b, Token = Token {Plus, "+"}, Operator = "+"
     /*
      * if (<expression>) { <statement[]> } else { <statement[]> }
@@ -48,6 +51,11 @@ pub enum Expression {
      *  Token = Token { LParen, "(" }
      */
     Call(Token, Box<Name>, Arguments),
+    /*
+     *  <expression(=array)>[<expression(=integerliteral)>]
+     *  Token = Token { LParen, "[" }
+     */
+    Index(Token, Box<Self>, Box<Self>),
 }
 
 impl Expression {
@@ -224,6 +232,18 @@ impl Node for Expression {
                         .join(", ")
                 )
             }
+            Expression::Index(t, a, i) => {
+                format!("{}[{}]", a.to_string(), i.to_string())
+            }
+            Expression::HashMap(_, keys, values) => {
+                let mut sv = vec![];
+                for (k, v) in keys.iter().zip(values) {
+                    sv.push(format!("{}: {}", k.to_string(), v.to_string()));
+                }
+                let mut s = sv.join(", ");
+                s = format!("{{ {s} }}");
+                s
+            }
         }
     }
 
@@ -234,11 +254,13 @@ impl Node for Expression {
             Expression::IntegerLiteral(t, ..) => t,
             Expression::StringLiteral(t, ..) => t,
             Expression::Array(t, ..) => t,
+            Expression::HashMap(t, ..) => t,
             Expression::Prefix(t, ..) => t,
             Expression::Infix(t, ..) => t,
             Expression::If(t, ..) => t,
             Expression::Func(t, ..) => t,
             Expression::Call(t, ..) => t,
+            Expression::Index(t, ..) => t,
         }
     }
 
@@ -247,13 +269,15 @@ impl Node for Expression {
             Expression::Bool(t, ..) => t.literal.clone(),
             Expression::Identifier(t, ..) => t.literal.clone(),
             Expression::IntegerLiteral(t, ..) => t.literal.clone(),
+            Expression::StringLiteral(t, ..) => t.literal.clone(),
             Expression::Array(t, ..) => t.literal.clone(),
+            Expression::HashMap(t, ..) => t.literal.clone(),
             Expression::Prefix(t, ..) => t.literal.clone(),
             Expression::Infix(t, ..) => t.literal.clone(),
             Expression::If(t, ..) => t.literal.clone(),
             Expression::Func(t, ..) => t.literal.clone(),
             Expression::Call(t, ..) => t.literal.clone(),
-            _ => panic!(),
+            Expression::Index(t, ..) => t.literal.clone(),
         }
     }
 

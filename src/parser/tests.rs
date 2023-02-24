@@ -724,4 +724,20 @@ mod parser_tests {
             //     .all(|(a, b)| a.to_string() == b));
         }
     }
+
+    #[test]
+    fn test_hashmap_parsing() {
+        let cases = vec![
+            "{}",
+            r#"{"hello": 1}"#,
+            r#"{"hello": 1, true: 2, 3: "three"}"#,
+        ];
+
+        for case in cases {
+            let program = init(case);
+            let expr = program.statements[0].expr().unwrap();
+
+            assert!(matches!(expr, Expression::HashMap(..)))
+        }
+    }
 }

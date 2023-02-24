@@ -62,6 +62,8 @@ fn eval_expression(expr: &Expression, env: &Rc<Environment>) -> Result<Object, E
         Expression::IntegerLiteral(_, i) => Ok(Object::Integer(*i)),
         Expression::StringLiteral(_, s) => Ok(Object::String(s.to_owned())),
         Expression::Array(_, exprs) => eval_array(exprs, env),
+        Expression::HashMap(_, keys, vals) => eval_hashmap(keys, vals, env),
+        Expression::Index(_, array, exprs) => eval_indexing(array, exprs, env),
         Expression::Prefix(_, op, expr) => eval_prefix(expr, op, env),
         Expression::Infix(_, left, op, right) => eval_infix(left, op, right, env),
         Expression::Identifier(_, ident) => eval_identifier(ident, env),
@@ -84,6 +86,67 @@ fn eval_expressions(exprs: &[Expression], env: &Rc<Environment>) -> Result<Vec<O
 fn eval_array(exprs: &[Expression], env: &Rc<Environment>) -> Result<Object, EvalError> {
     let exprs = eval_expressions(exprs, env)?;
     Ok(Object::Array(exprs))
+}
+
+fn eval_hashmap(
+    keys: &[Expression],
+    values: &[Expression],
+    env: &Rc<Environment>,
+) -> Result<Object, EvalError> {
+    let mut hm = HashMap::new();
+    for (k, v) in keys.iter().zip(values) {
+        let key = eval_expression(k, env)?;
+        if !matches!(
+            key,
+            Object::Integer(_) | Object::Boolean(_) | Object::String(_)
+        ) {
+            return Err(EvalError::new("Bad Hash key.".to_string()));
+        }
+        let val = eval_expression(v, env)?;
+        hm.insert(key, val);
+    }
+
+    Ok(Object::HashMap(hm))
+}
+
+fn eval_indexing(
+    arr: &Expression,
+    i: &Expression,
+    env: &Rc<Environment>,
+) -> Result<Object, EvalError> {
+    let arr = eval_expression(arr, env)?;
+    match arr {
+        Object::Array(a) => {
+            if let Object::Integer(int) = eval_expression(i, env)? {
+                return Ok(a.get(int as usize).unwrap().copy());
+            } else {
+                return Err(EvalError::new("Index must an IntegerLiteral".to_string()));
+            };
+        }
+        Object::HashMap(hm) => {
+            let i = eval_expression(i, env)?;
+            if (matches!(
+                i,
+                Object::Integer(_) | Object::Boolean(_) | Object::String(_)
+            )) {
+                let val = hm.get(&i);
+                if let Some(x) = val {
+                    return Ok(x.copy());
+                } else {
+                    return Ok(Object::Null);
+                }
+            } else {
+                return Err(EvalError::new(
+                    "Index must an Int, Bool or String.".to_string(),
+                ));
+            }
+        }
+        _ => (),
+    }
+
+    Err(EvalError::new(
+        "This is not an Array or a HashMap 😠".to_string()),
+    )
 }
 
 fn eval_call(

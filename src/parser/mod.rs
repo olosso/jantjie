@@ -87,6 +87,7 @@ impl Parser {
         prefix_fns.insert(TokenType::LBracket, Self::parse_bracket);
         prefix_fns.insert(TokenType::If, Self::parse_if_expression);
         prefix_fns.insert(TokenType::Function, Self::parse_func_expression);
+        prefix_fns.insert(TokenType::LBrace, Self::parse_hashmap_expression);
 
         prefix_fns
     }
@@ -109,6 +110,7 @@ impl Parser {
         infix_fns.insert(TokenType::GT, Self::parse_infix_expression);
         infix_fns.insert(TokenType::LT, Self::parse_infix_expression);
         infix_fns.insert(TokenType::LParen, Self::parse_call_expression);
+        infix_fns.insert(TokenType::LBracket, Self::parse_index_expression);
 
         infix_fns
     }
@@ -252,7 +254,8 @@ impl Parser {
             || self.cur_tokentype_is(TokenType::If)
             || self.cur_tokentype_is(TokenType::Function)
             || self.cur_tokentype_is(TokenType::LParen)
-            || self.cur_tokentype_is(TokenType::LBracket))
+            || self.cur_tokentype_is(TokenType::LBracket)
+            || self.cur_tokentype_is(TokenType::LBrace))
         {
             return Err(PE::new_t(
                 "First token in Expression was a {:?}, this is not supported.".to_string(),
@@ -606,6 +609,48 @@ impl Parser {
         ))
     }
 
+    fn parse_hashmap_expression(&mut self) -> Result<Expression, ParseError> {
+        assert!(self.cur_tokentype_is(TokenType::LBrace));
+        let rbracket = self.current_token.clone();
+
+        if self.peek_tokentype_is(TokenType::RBrace) {
+            self.next_token();
+            return Ok(Expression::HashMap(rbracket, vec![], vec![]));
+        };
+
+        let mut keys = vec![];
+        let mut values = vec![];
+
+        self.next_token();
+        loop {
+            let key = self.parse_expression(Precedence::LOWEST)?;
+
+            if !self.expect_peek(TokenType::Colon) {
+                return Err(ParseError::new(
+                    "HashMap key not followed by a colon.".to_string(),
+                ));
+            };
+            self.next_token();
+            let value = self.parse_expression(Precedence::LOWEST)?;
+            keys.push(key);
+            values.push(value);
+
+            if self.expect_peek(TokenType::RBrace) {
+                break;
+            };
+
+            if !self.expect_peek(TokenType::Comma) {
+                return Err(ParseError::new(
+                    "HashMap entry not followed by a comma.".to_string(),
+                ));
+            };
+
+            self.next_token();
+        }
+
+        Ok(Expression::HashMap(rbracket, keys, values))
+    }
+
     fn parse_call_expression(&mut self, left: Expression) -> Result<Expression, ParseError> {
         assert!(self.cur_tokentype_is(TokenType::LParen));
 
@@ -615,6 +660,22 @@ impl Parser {
         let args = self.parse_call_args()?;
 
         Ok(Expression::Call(lparen, Box::new(left), args))
+    }
+
+    fn parse_index_expression(&mut self, left: Expression) -> Result<Expression, ParseError> {
+        assert!(self.cur_tokentype_is(TokenType::LBracket));
+
+        // Store the current values of token, because next we are going to forward the lexer.
+        let lbracket = self.current_token.clone();
+
+        let args = self.parse_call_args()?;
+        assert!(args.len() == 1);
+
+        Ok(Expression::Index(
+            lbracket,
+            Box::new(left),
+            Box::new(args[0].clone()),
+        ))
     }
 
     fn parse_call_args(&mut self) -> Result<Vec<Expression>, ParseError> {

@@ -29,6 +29,7 @@ pub enum TokenType {
     // Delimiters
     Comma,
     Semicolon,
+    Colon,
 
     LParen,
     RParen,
@@ -78,6 +79,7 @@ impl TokenType {
 
             TokenType::Comma => ",",
             TokenType::Semicolon => ";",
+            TokenType::Colon => ":",
 
             TokenType::LParen => "(",
             TokenType::RParen => ")",
@@ -151,7 +153,7 @@ impl Token {
         }
     }
 
-    /// Returns the precedence level of each operator used in mathematical operations.
+    /// Returns the precedence level of each operator used in infix operations.
     /// Returns an Error if called with on an non-math operator.
     pub fn precedence(&self) -> Option<Precedence> {
         let p = match self.token_type {
@@ -164,6 +166,7 @@ impl Token {
             TokenType::Asterisk => Precedence::PRODUCT,
             TokenType::Slash => Precedence::PRODUCT,
             TokenType::LParen => Precedence::CALL,
+            TokenType::LBracket => Precedence::INDEX,
             _ => return None,
         };
 

@@ -181,6 +181,7 @@ impl Lexer {
             '{' => Token::new(TokenType::LBrace, self.ch.to_string()),
             '}' => Token::new(TokenType::RBrace, self.ch.to_string()),
             ',' => Token::new(TokenType::Comma, self.ch.to_string()),
+            ':' => Token::new(TokenType::Colon, self.ch.to_string()),
             '+' => Token::new(TokenType::Plus, self.ch.to_string()),
             '-' => Token::new(TokenType::Minus, self.ch.to_string()),
             '<' => Token::new(TokenType::LT, self.ch.to_string()),
@@ -236,6 +237,85 @@ mod lexer_helper_tests {
 #[cfg(test)]
 mod token_tests {
     use super::*;
+
+    #[test]
+    fn test_lexing_hash() {
+        let input = r#"{"hello": 1, true: 2, 3: "three"}"#;
+        // It works, don't @ me.
+        let expected = vec![
+            Token {
+                token_type: TokenType::LBrace,
+                literal: "{".to_string(),
+            },
+            Token {
+                token_type: TokenType::String,
+                literal: "hello".to_string(),
+            },
+            Token {
+                token_type: TokenType::Colon,
+                literal: ":".to_string(),
+            },
+            Token {
+                token_type: TokenType::Int,
+                literal: "1".to_string(),
+            },
+            Token {
+                token_type: TokenType::Comma,
+                literal: ",".to_string(),
+            },
+            Token {
+                token_type: TokenType::True,
+                literal: "true".to_string(),
+            },
+            Token {
+                token_type: TokenType::Colon,
+                literal: ":".to_string(),
+            },
+            Token {
+                token_type: TokenType::Int,
+                literal: "2".to_string(),
+            },
+            Token {
+                token_type: TokenType::Comma,
+                literal: ",".to_string(),
+            },
+            Token {
+                token_type: TokenType::Int,
+                literal: "3".to_string(),
+            },
+            Token {
+                token_type: TokenType::Colon,
+                literal: ":".to_string(),
+            },
+            Token {
+                token_type: TokenType::String,
+                literal: "three".to_string(),
+            },
+            Token {
+                token_type: TokenType::RBrace,
+                literal: "}".to_string(),
+            },
+        ];
+
+        let mut l = Lexer::new(String::from(input));
+        let mut token = l.next_token();
+
+        for expected_token in expected.into_iter() {
+            // Check that token types returned by the lexer is correct.
+            assert_eq!(
+                expected_token.token_type, token.token_type,
+                "Expected TokenType::{:?}, but got TokenType::{:?}",
+                expected_token.token_type, token.token_type
+            );
+            // Check that the literal returned by the lexer is correct.
+            assert_eq!(
+                expected_token.literal, token.literal,
+                "Expected literal {:?}, but got literal {:?}",
+                expected_token, token.literal
+            );
+            token = l.next_token();
+        }
+    }
 
     #[test]
     fn test_lexing_let() {

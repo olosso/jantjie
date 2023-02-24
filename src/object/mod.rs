@@ -1,18 +1,20 @@
 use crate::ast::{Body, Expression, Node, Params, Statement};
 use crate::evaluator::EvalError;
 use core::cmp::PartialEq;
+use std::hash::{Hash, Hasher};
 use std::{collections::HashMap, ops::Deref};
 
 /*
  * @TYPE
  */
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub enum Type {
     NULL,
     INTEGER,
     STRING,
     BOOLEAN,
     ARRAY,
+    HASHMAP,
     RETURN,
     FUNCTION,
     BUILTIN,
@@ -29,8 +31,29 @@ pub enum Object {
     Boolean(bool),
     Array(Vec<Self>),
     Return(Box<Self>),
+    HashMap(HashMap<Self, Self>),
     Function(Vec<Expression>, Statement, Environment),
     Builtin(&'static str, fn(Vec<Self>) -> Result<Self, EvalError>),
+}
+
+impl Hash for Object {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        match self {
+            Self::Integer(i) => {
+                Type::INTEGER.hash(state);
+                i.hash(state);
+            }
+            Self::Boolean(b) => {
+                Type::BOOLEAN.hash(state);
+                b.hash(state);
+            }
+            Self::String(s) => {
+                Type::STRING.hash(state);
+                s.hash(state);
+            }
+            _ => unreachable!("Only Ints, Bools and Strings should appear as keys."),
+        }
+    }
 }
 
 impl PartialEq for Object {
@@ -94,6 +117,13 @@ impl PartialEq for Object {
                     false
                 }
             }
+            Object::HashMap(a) => {
+                if let Object::HashMap(b) = other {
+                    a.iter().zip(b).all(|(a_, b_)| a_ == b_)
+                } else {
+                    false
+                }
+            }
         }
     }
 }
@@ -108,6 +138,7 @@ impl Object {
             Object::String(_) => Type::STRING,
             Object::Boolean(_) => Type::BOOLEAN,
             Object::Array(_) => Type::ARRAY,
+            Object::HashMap(_) => Type::HASHMAP,
             Object::Return(_) => Type::RETURN,
             Object::Function(..) => Type::FUNCTION,
             Object::Builtin(..) => Type::BUILTIN,
@@ -118,7 +149,7 @@ impl Object {
         match self {
             Object::Null => "null".to_string(),
             Object::Integer(i) => i.to_string(),
-            Object::String(s) => s.to_owned(),
+            Object::String(s) => format!("\"{}\"", s.to_owned()),
             Object::Boolean(b) => b.to_string(),
             Object::Array(a) => {
                 format!(
@@ -143,6 +174,14 @@ impl Object {
                 )
             }
             Object::Builtin(s, f) => s.to_string(),
+            Object::HashMap(m) => {
+                let mut sv = vec![];
+                for (k, v) in m {
+                    sv.push(format!("{}: {}", k.inspect(), v.inspect()))
+                }
+                let s = sv.join(", ");
+                format!("{{ {} }}", s)
+            }
         }
     }
 
@@ -227,6 +266,13 @@ impl Object {
                     b.push(elem.copy())
                 }
                 Self::Array(b)
+            }
+            Self::HashMap(a) => {
+                let mut b = HashMap::new();
+                for (k, v) in a {
+                    b.insert(k.copy(), v.copy());
+                }
+                Self::HashMap(b)
             }
         }
     }
